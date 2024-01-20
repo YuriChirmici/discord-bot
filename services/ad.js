@@ -38,6 +38,10 @@ class Ad {
 		});
 	}
 
+	static async clearDelayedDeletions() {
+		await Models.Scheduler.deleteMany({ name: "ad" });
+	}
+
 	static getMemberAdRoles(member) {
 		const roles = [];
 	

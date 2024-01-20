@@ -75,10 +75,11 @@ module.exports = {
 			components: [row]
 		});
 
-		await interaction.reply({ content: "Объявление создано!", ephemeral: true });
-
+		await AdService.clearDelayedDeletions();
 		const taskDate = Date.now() + time * 60 * 1000;
 		await AdService.addDelayedDeletion({ guildId: interaction.member.guild.id }, taskDate, NAME);
+
+		await interaction.reply({ content: "Объявление создано!", ephemeral: true });
 	},
 
 	async buttonClick(interaction) {

@@ -17,6 +17,7 @@ module.exports = {
 	async execute(interaction, client) {
 		const guildId = interaction.member.guild.id;
 		const guild = await client.guilds.fetch(guildId);
+		await AdService.clearDelayedDeletions();
 		await AdService.deleteAdRoles(guild);
 		await interaction.reply({ content: "Роли очищены!", ephemeral: true });
 	}
