@@ -1,4 +1,4 @@
-const { Client, Collection, GatewayIntentBits } = require("discord.js");
+const { Client, Events, Collection, GatewayIntentBits } = require("discord.js");
 const { commands } = require("../services/commands");
 const { registerEvents } = require("./events");
 const { token } = require("../config.json");
@@ -10,8 +10,20 @@ commands.forEach((command) => {
     client.commands.set(command.data.name, command);
 });
 
+let clientResolve;
+const clientReady = new Promise((resolve) => clientResolve = resolve);
+client.once(Events.ClientReady, readyClient => {
+    console.log(`Ready! Logged in as ${readyClient.user.tag}`);
+    clientResolve();
+});
+
+
 registerEvents(client);
 
 module.exports = {
-	login: () => client.login(token)
+	login: async () => {
+        client.login(token);
+        await clientReady
+    },
+    client
 }
