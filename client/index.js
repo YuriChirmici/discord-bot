@@ -3,7 +3,9 @@ const { commands } = require("../services/commands");
 const { registerEvents } = require("./events");
 const { token } = require("../config.json");
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+const client = new Client({
+    intents: [ GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers ]
+});
 
 client.commands = new Collection();
 commands.forEach((command) => {

@@ -96,6 +96,7 @@ module.exports = {
 	},
 
 	async task(data, client) {
-		await AdService.deleteAdRoles(data.guildId, client);
+		const guild = await client.guilds.fetch(data.guildId);
+		await AdService.deleteAdRoles(guild);
 	}
 };
