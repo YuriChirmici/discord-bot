@@ -64,10 +64,11 @@ class Ad {
 	static async deleteAdRoles(guild, saveStat = true) {
 		const members = await this.getGuildMembers(guild);
 		const promises = [];
-		const stat = saveStat && this.getRolesStat();
+		const stat = await Models.AdStats.find({}).lean();
 
 		for (let member of members) {
 			const adRoles = this.getMemberAdRoles(member);
+			const memberStat = stat.find(({ memberId }) => memberId === member.id)?.roles || {};
 
 			for (let role of adRoles) {
 				const guildRole = guild.roles.cache.find(({ name }) => role.name === name);
@@ -78,48 +79,42 @@ class Ad {
 					}
 				}
 				
-				saveStat && this.addStatRole(stat.members, member.id, role);
-			 };
+				this.addStatRole(memberStat, role);
+			};
+	
+			if (saveStat && Object.keys(memberStat).length) {
+				this.saveStats(member.id, memberStat);
+			}
 		}
 
 		await Promise.all(promises);
-
-		saveStat && this.saveStats(stat);
 	}
 
-	static getRolesStat() {
-		const statPath = path.join(__dirname, "../data/ad-stat.json");
-		const stat = JSON.parse(fs.readFileSync(statPath), "utf8");
-	
-		stat ||= {};
-		stat.members ||= {};
-		return stat;
+	static async saveStats(memberId, roles) {
+		const existed = await Models.AdStats.findOne({ memberId });
+		if (existed) {
+			await Models.AdStats.updateOne({ memberId }, { roles })
+		} else {
+			await  Models.AdStats.create({ memberId, roles});
+		}
 	}
 
-	static addStatRole(stat, memberId, role) {
-		stat[memberId] ||= {};
-
+	static addStatRole(stat, role) {
 		const index = adConfig.roles.findIndex(({ name }) => role.name === name);
-		stat[memberId][index] = (stat[memberId][index] || 0) + 1;
+		stat[index] = (stat[index] || 0) + 1;
 	}
 
-	static saveStats(stat) {
-		const statPath = path.join(__dirname, "../data/ad-stat.json");
-		fs.writeFileSync(statPath, JSON.stringify(stat, null, "\t"));
-	}
-
-	static clearStats() {
-		const statPath = path.join(__dirname, "../data/ad-stat.json");
-		fs.writeFileSync(statPath, JSON.stringify({}, null, "\t"));
+	static async clearStats() {
+		await Models.AdStats.deleteMany({});
 	}
 
 	static async getStatistics(members) {
 		const stat = [];
-		const rawStat = this.getRolesStat().members;
+		const rawStat = await Models.AdStats.find({}).lean();
 		
-		for (let key in rawStat) {
-			const member = members.find(({ id }) => id === key);
-			const roles = rawStat[key] || {};
+		for (let item of rawStat) {
+			const member = members.find(({ id }) => id === item.memberId);
+			const roles = item.roles || {};
 			const nums = [];
 			for (let i = 0; i < adConfig.roles.length; i++) {
 				nums.push(roles[i] || roles["" + i] || 0)

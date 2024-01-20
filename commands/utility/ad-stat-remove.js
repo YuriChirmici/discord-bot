@@ -15,7 +15,7 @@ module.exports = {
 		.setDMPermission(false),
 
 	async execute(interaction) {
-		AdService.clearStats();
+		await AdService.clearStats();
 		await interaction.reply({ content: "Статистика очищена!", ephemeral: true });
 	}
 };
