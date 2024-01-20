@@ -17,10 +17,7 @@ for (const file of modelFiles) {
 module.exports = {
 	connect: async() => {
 		try {
-			await mongoose.connect(
-				`mongodb+srv://${database.username}:${database.password}@` +
-				`${database.cluster}.mongodb.net/${database.name}?retryWrites=true&w=majority`
-			);
+			await mongoose.connect(database.connectionLink);
 			console.log("Connected to DB successfully");
 		} catch (err) {
 			console.log(err);
