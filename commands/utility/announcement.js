@@ -6,8 +6,7 @@ const {
 	ButtonBuilder,
 	ButtonStyle
 } = require("discord.js");
-const fs = require("fs");
-const path = require("path");
+const AdService = require("../../services/ad");
 const { ad: adConfig } = require("../../config.json");
 
 const NAME = "ad";
@@ -21,6 +20,15 @@ const createButton = (id, emoji, style = ButtonStyle.Secondary) => {
 		
 	return button;
 };
+
+const createAd = (title, text) => {
+	const ad = new EmbedBuilder()
+		.setColor(adConfig.color)
+		.setTitle(title)
+		.setDescription(text)
+
+	return ad;
+}
 
 module.exports = {
 	name: NAME,
@@ -70,7 +78,7 @@ module.exports = {
 		await interaction.reply({ content: "Объявление создано!", ephemeral: true });
 
 		const taskDate = Date.now() + time * 60 * 1000;
-		addTask({ guildId: interaction.member.guild.id }, taskDate);
+		AdService.addDelayedDeletion({ guildId: interaction.member.guild.id }, taskDate, NAME);
 	},
 
 	async buttonClick(interaction) {
@@ -78,7 +86,7 @@ module.exports = {
 		const roleName = adConfig.roles[+roleNum].name;
 		const role = interaction.member.guild.roles.cache.find(r => r.name == roleName);
 
-		const roleCleared = await setRole(role, interaction.member);
+		const roleCleared = await AdService.changeRole(role, interaction.member);
 		const message = roleCleared ? "Роль очищена" : "Роль изменена на " + roleName;
 
 		await interaction.reply({
@@ -88,81 +96,6 @@ module.exports = {
 	},
 
 	async task(data, client) {
-		const guild = await client.guilds.fetch(data.guildId);
-		const members = guild.members.cache; // TODO: проверить все ли члены видны?
-		const promises = [];
-
-		members.forEach((member) => {
-			const roles = checkRolesForRemove(member);
-			roles.forEach((role) => promises.push(member.roles.remove(role)));
-
-		});
-
-		await Promise.all(promises); // TODO: make 20 per sec
+		await AdService.deleteAdRoles(data.guildId, client);
 	}
-};
-
-const createAd = (title, text) => {
-	const ad = new EmbedBuilder()
-		.setColor(adConfig.color)
-		.setTitle(title)
-		.setDescription(text)
-
-	return ad;
-}
-
-const setRole = async (newRole, member) => {
-	let roleCleared = false;
-	const promises = [];
-
-	for (let role of adConfig.roles) {
-		const userRole = member.roles.cache.find(r => r.name === role.name);
-
-		if (role.name !== newRole.name) {
-			if (userRole) {
-				promises.push(member.roles.remove(userRole));
-			}
-			
-			continue;
-		}
-
-		if (userRole) {
-			promises.push(member.roles.remove(userRole));
-			roleCleared = true;
-		} else {
-			promises.push(member.roles.add(newRole));
-		}
-	}
-
-	await Promise.all(promises);
-
-	return roleCleared;
-}
-
-const checkRolesForRemove = (member) => {
-	const roles = []
-
-	for (let i = 0; i < adConfig.roles.length; i++) {
-		const adRole = adConfig.roles[i];
-		if (adRole.save) continue;
-
-		const foundRole = member.roles.cache.find((role) => role.name === adRole.name);
-		if (foundRole) {
-			roles.push(foundRole);
-		}
-	}
-
-	return roles;
-} 
-
-const addTask = (taskData, date) => {
-	const schedulerPath = path.join(__dirname, "../../data/scheduler.json");
-	const scheduler = JSON.parse(fs.readFileSync(schedulerPath), "utf8");
-	scheduler.tasks.push({
-		name: NAME,
-		executionDate: date,
-		data: taskData
-	});
-
-	fs.writeFileSync(schedulerPath, JSON.stringify(scheduler, null, "\t"));
 };
