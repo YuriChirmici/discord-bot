@@ -2,16 +2,17 @@ const {
 	SlashCommandBuilder,
 	PermissionFlagsBits,
 	ActionRowBuilder,
+	EmbedBuilder,
 	ButtonBuilder,
 	ButtonStyle
 } = require("discord.js");
 
-const { adRoles: roles } = require("../../config.json");
+const { ad: adConfig } = require("../../config.json");
 
-const name = "ad";
+const NAME = "ad";
 
 const createButton = (id, emoji, style = ButtonStyle.Secondary) => {
-	const customId = `${name}_emoji${id}`
+	const customId = `${NAME}_emoji${id}`
 	const button = new ButtonBuilder()
 		.setCustomId(customId)
 		.setStyle(style)
@@ -21,9 +22,9 @@ const createButton = (id, emoji, style = ButtonStyle.Secondary) => {
 };
 
 module.exports = {
-	name,
+	name: NAME,
 	data: new SlashCommandBuilder()
-		.setName(name)
+		.setName(NAME)
 		.setDescription("Создает объявление. <Заголовок объявления> <Текст объявления> <Время в минутах>")
 		.addStringOption((option) =>
 			option.setName("header")
@@ -49,22 +50,27 @@ module.exports = {
 		// const time = interaction.options.getInteger("time");
 
 		const buttons = [];
-		for (let i = 0; i < roles.length; i++) {
-			buttons.push(createButton(i, roles[i].emoji))
+		for (let i = 0; i < adConfig.roles.length; i++) {
+			buttons.push(createButton(i, adConfig.roles[i].emoji))
 		}
 
 		const row = new ActionRowBuilder()
 			.addComponents(...buttons);
 
-		await interaction.reply({
-			content: `${header}\n${text}`,
-			components: [row],
+		const ad = createAd(header, text);
+		
+		const channel = interaction.member.guild.channels.cache.find(c => c.id === interaction.channelId)
+
+		await channel.send({
+			embeds: [ad],
+			components: [row]
 		});
+		await interaction.reply({ content: "Объявление создано!", ephemeral: true });
 	},
 
 	async buttonClick(interaction) {
 		const roleNum = interaction.customId[interaction.customId.length - 1];
-		const roleName = roles[+roleNum].name;
+		const roleName = adConfig.roles[+roleNum].name;
 		const role = interaction.member.guild.roles.cache.find(r => r.name == roleName);
 
 		const roleCleared = await setRole(role, interaction.member);
@@ -77,11 +83,20 @@ module.exports = {
 	}
 };
 
+const createAd = (title, text) => {
+	const ad = new EmbedBuilder()
+		.setColor(adConfig.color)
+		.setTitle(title)
+		.setDescription(text)
+
+	return ad;
+}
+
 const setRole = async (newRole, member) => {
 	let roleCleared = false;
 	const promises = [];
 
-	for (let role of roles) {
+	for (let role of adConfig.roles) {
 		const userRole = member.roles.cache.find(r => r.name === role.name);
 
 		if (role.name !== newRole.name) {
