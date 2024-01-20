@@ -124,7 +124,7 @@ class Ad {
 				nums.push(roles[i] || roles["" + i] || 0)
 			}
 
-			stat.push(`@${member.user.username} ` + nums.join("/"));
+			stat.push(`<@${member.user.id}> ` + nums.join("/"));
 		}
 
 		return stat.join("\n");

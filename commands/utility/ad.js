@@ -32,31 +32,32 @@ const createAd = (title, text) => {
 
 module.exports = {
 	name: NAME,
+	isCustomCommand: true,
 	data: new SlashCommandBuilder()
 		.setName(NAME)
-		.setDescription("Создает объявление. <Заголовок объявления> <Текст объявления> <Время в минутах>")
-		.addStringOption((option) =>
-			option.setName("header")
-				.setDescription("Заголовок объявления")
-				.setRequired(true)
-		)
-		.addStringOption((option) =>
-			option.setName("text")
-				.setDescription("Текст объявления")
-				.setRequired(true)
-		)
-		.addIntegerOption((option) =>
-			option.setName("time")
-				.setDescription("Время в минутах")
-				.setRequired(true)
+		.setDescription(
+			`Используй !${NAME}. Создает объявление. !ad {Заголовок} {Время в минутах} {текст (optional)} {содержание}`
 		)
 		.setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
 		.setDMPermission(false),
 
-	async execute(interaction) {
-		const header = interaction.options.getString("header");
-		const text = interaction.options.getString("text");
-		const time = interaction.options.getInteger("time");
+	async execute(message) {
+		if (!message.customArgs) {
+			await message.channel.send("Используй команду с !");
+		}
+
+		if (message.customArgs.length < 3) {
+			await message.channel.send("Неправильные аргументы");
+		}
+
+		const header = message.customArgs[0] || "";
+		const time = Number.parseInt(message.customArgs[1]);
+		let text = message.customArgs[2] || "";
+		let content = "";
+		if (message.customArgs.length === 4) {
+			content = text;
+			text = message.customArgs[3]
+		}
 
 		const buttons = [];
 		for (let i = 0; i < adConfig.roles.length; i++) {
@@ -70,11 +71,12 @@ module.exports = {
 		
 		await AdService.clearDelayedDeletions();
 		const taskDate = Date.now() + time * 60 * 1000;
-		await AdService.addDelayedDeletion({ guildId: interaction.member.guild.id }, taskDate, NAME);
+		await AdService.addDelayedDeletion({ guildId: message.guildId }, taskDate, NAME);
 
-		await interaction.reply({
+		await message.channel.send({
 			embeds: [ad],
-			components: [row]
+			components: [row],
+			content
 		});
 	},
 

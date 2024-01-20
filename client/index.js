@@ -14,7 +14,7 @@ const client = new Client({
 
 client.commands = new Collection();
 commands.forEach((command) => {
-    client.commands.set(command.data.name, command);
+    client.commands.set(command.name, command);
 });
 
 let clientResolve;
