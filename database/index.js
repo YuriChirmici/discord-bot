@@ -19,7 +19,7 @@ module.exports = {
 		try {
 			await mongoose.connect(
 				`mongodb+srv://${database.username}:${database.password}@` +
-				`cluster0.bfw7bsu.mongodb.net/${database.name}?retryWrites=true&w=majority`
+				`${database.cluster}.mongodb.net/${database.name}?retryWrites=true&w=majority`
 			);
 			console.log("Connected to DB successfully");
 		} catch (err) {
