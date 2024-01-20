@@ -12,7 +12,7 @@ const { ad: adConfig } = require("../../config.json");
 const NAME = "ad";
 
 const createButton = (id, emoji, style = ButtonStyle.Secondary) => {
-	const customId = `${NAME}_emoji${id}`
+	const customId = `${NAME}_role${id}`
 	const button = new ButtonBuilder()
 		.setCustomId(customId)
 		.setStyle(style)

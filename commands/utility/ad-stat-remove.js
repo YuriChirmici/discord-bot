@@ -1,6 +1,9 @@
 const {
 	SlashCommandBuilder,
 	PermissionFlagsBits,
+	ButtonBuilder,
+	ActionRowBuilder,
+	ButtonStyle
 } = require("discord.js");
 const AdService = require("../../services/ad");
 
@@ -15,7 +18,29 @@ module.exports = {
 		.setDMPermission(false),
 
 	async execute(interaction) {
-		await AdService.clearStats();
-		await interaction.reply({ content: "Статистика очищена!", ephemeral: true });
+		const customId = `${NAME}_confirm`
+		const confirm = new ButtonBuilder()
+			.setCustomId(customId)
+			.setStyle(ButtonStyle.Danger)
+			.setLabel("Подтвердить");
+
+		const row = new ActionRowBuilder()
+			.addComponents(confirm);
+
+		await interaction.reply({
+			components: [ row ],
+			ephemeral: true
+		});
+	},
+
+	async buttonClick(interaction) {
+		const subcommand = interaction.customId.split("_")[1];
+		if (subcommand === "confirm") {
+			await AdService.clearStats();
+			await interaction.reply({
+				content: "Статистика очищена!",
+				ephemeral: true
+			});
+		}
 	}
 };
