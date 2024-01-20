@@ -68,18 +68,14 @@ module.exports = {
 
 		const ad = createAd(header, text);
 		
-		const channel = interaction.member.guild.channels.cache.find(c => c.id === interaction.channelId)
-
-		await channel.send({
-			embeds: [ad],
-			components: [row]
-		});
-
 		await AdService.clearDelayedDeletions();
 		const taskDate = Date.now() + time * 60 * 1000;
 		await AdService.addDelayedDeletion({ guildId: interaction.member.guild.id }, taskDate, NAME);
 
-		await interaction.reply({ content: "Объявление создано!", ephemeral: true });
+		await interaction.reply({
+			embeds: [ad],
+			components: [row]
+		});
 	},
 
 	async buttonClick(interaction) {
