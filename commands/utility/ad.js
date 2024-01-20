@@ -50,7 +50,7 @@ module.exports = {
 				.setDescription("Время в минутах")
 				.setRequired(true)
 		)
-		.setDefaultMemberPermissions(PermissionFlagsBits.ManageEvents)
+		.setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
 		.setDMPermission(false),
 
 	async execute(interaction) {

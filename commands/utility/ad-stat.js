@@ -11,7 +11,7 @@ module.exports = {
 	data: new SlashCommandBuilder()
 		.setName(NAME)
 		.setDescription("Показывает статистику ролей, выданных через объявление")
-		.setDefaultMemberPermissions(PermissionFlagsBits.ManageEvents)
+		.setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
 		.setDMPermission(false),
 
 	async execute(interaction, client) {
