@@ -1,6 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const { ad: adConfig } = require("../config.json");
+const { Models } = require("../database");
 
 class Ad {
 	static async changeRole(newRole, member) {
@@ -29,20 +30,16 @@ class Ad {
 		return roleCleared;
 	}
 
-	static addDelayedDeletion(taskData, date, name) {
-		const schedulerPath = path.join(__dirname, "../data/scheduler.json");
-		const scheduler = JSON.parse(fs.readFileSync(schedulerPath), "utf8");
-		scheduler.tasks.push({
+	static async addDelayedDeletion(taskData, date, name) {
+		await Models.Scheduler.create({
 			name,
 			executionDate: date,
 			data: taskData
 		});
-	
-		fs.writeFileSync(schedulerPath, JSON.stringify(scheduler, null, "\t"));
 	}
 
 	static getMemberAdRoles(member) {
-		const roles = []
+		const roles = [];
 	
 		for (let i = 0; i < adConfig.roles.length; i++) {
 			const adRole = adConfig.roles[i];
@@ -55,8 +52,17 @@ class Ad {
 		return roles;
 	}
 
-	static async deleteAdRoles(guild, saveStat = true) {
+	static async getGuildMembers(guild) {
 		const members = await guild.members.fetch();
+		const prepared = [];
+		for (let member of members) {
+			prepared.push(member[1]);
+		}
+		return prepared;
+	}
+
+	static async deleteAdRoles(guild, saveStat = true) {
+		const members = await this.getGuildMembers(guild);
 		const promises = [];
 		const stat = saveStat && this.getRolesStat();
 
