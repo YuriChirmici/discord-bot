@@ -1,4 +1,5 @@
-const { Events, PermissionsBitField  } = require("discord.js");
+const { Events, PermissionFlagsBits } = require("discord.js");
+const { commandsPermission } = require("../config.json");
 
 const findCommand = (commands, commandName) => {
 	const command = commands.get(commandName);
@@ -29,7 +30,8 @@ const parseCustomArgs = (message) => {
 const registerEvents = (client) => {
 	client.on(Events.InteractionCreate, async (interaction) => {
 		if (!interaction.isChatInputCommand()) return;
-				const command = findCommand(interaction.client.commands, interaction.commandName);
+
+		const command = findCommand(interaction.client.commands, interaction.commandName);
 		if (!command) return;
 
 		try {
@@ -41,7 +43,7 @@ const registerEvents = (client) => {
 
 	client.on(Events.MessageCreate, async (message) => {
 		const msg = message.content.trim();
-		if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator) || msg[0] !== "!") return;
+		if (!message.member.permissions.has(PermissionFlagsBits[commandsPermission]) || msg[0] !== "!") return;
 
 		const argsArr = msg.split(" ");
 		const commandName = argsArr.shift().substring(1);

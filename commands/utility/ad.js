@@ -7,7 +7,7 @@ const {
 	ButtonStyle
 } = require("discord.js");
 const AdService = require("../../services/ad");
-const { ad: adConfig } = require("../../config.json");
+const { ad: adConfig, commandsPermission } = require("../../config.json");
 
 const NAME = "ad";
 
@@ -38,7 +38,7 @@ module.exports = {
 		.setDescription(
 			`Используй !${NAME}. Создает объявление. !ad {Заголовок} {Время в минутах} {текст (optional)} {содержание}`
 		)
-		.setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+		.setDefaultMemberPermissions(PermissionFlagsBits[commandsPermission])
 		.setDMPermission(false),
 
 	async execute(message) {

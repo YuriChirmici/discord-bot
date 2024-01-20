@@ -6,6 +6,7 @@ const {
 	ButtonStyle
 } = require("discord.js");
 const AdService = require("../../services/ad");
+const { commandsPermission } = require("../../config.json");
 
 const NAME = "ad-stat-remove";
 
@@ -14,7 +15,7 @@ module.exports = {
 	data: new SlashCommandBuilder()
 		.setName(NAME)
 		.setDescription("Очищает статистику")
-		.setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+		.setDefaultMemberPermissions(PermissionFlagsBits[commandsPermission])
 		.setDMPermission(false),
 
 	async execute(interaction) {

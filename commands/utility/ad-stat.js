@@ -3,6 +3,7 @@ const {
 	PermissionFlagsBits,
 } = require("discord.js");
 const AdService = require("../../services/ad");
+const { commandsPermission } = require("../../config.json");
 
 const NAME = "ad-stat";
 
@@ -11,7 +12,7 @@ module.exports = {
 	data: new SlashCommandBuilder()
 		.setName(NAME)
 		.setDescription("Показывает статистику ролей, выданных через объявление")
-		.setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+		.setDefaultMemberPermissions(PermissionFlagsBits[commandsPermission])
 		.setDMPermission(false),
 
 	async execute(interaction, client) {
