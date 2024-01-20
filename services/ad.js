@@ -118,6 +118,7 @@ class Ad {
 		
 		for (let item of rawStat) {
 			const member = members.find(({ id }) => id === item.memberId);
+			if (!member) continue;
 			const roles = item.roles || {};
 			const nums = [];
 			for (let i = 0; i < adConfig.roles.length; i++) {
