@@ -44,10 +44,12 @@ module.exports = {
 	async execute(message) {
 		if (!message.customArgs) {
 			await message.channel.send("Используй команду с !");
+			return;
 		}
 
 		if (message.customArgs.length < 3) {
 			await message.channel.send("Неправильные аргументы");
+			return;
 		}
 
 		const header = message.customArgs[0] || "";
