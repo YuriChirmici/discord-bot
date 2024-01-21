@@ -1,0 +1,19 @@
+{
+	"token": "",
+	"clientId": "",
+	"guildId": "",
+	"database": {
+		"connectionLink": ""
+	},
+	"ad": {
+		"roles": [ 
+			{ "name": "", "emoji": "" },
+			{ "name": "", "emoji": "" },
+			{ "name": "", "emoji": "" },
+			{ "name": "", "emoji": "" },
+			{ "name": "", "emoji": "", "save": true }
+		],
+		"color": [ 128, 177, 235 ]
+	},
+	"commandsPermission": "SendMessages"
+}
