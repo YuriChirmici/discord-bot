@@ -113,7 +113,7 @@ class Ad {
 	}
 
 	static async getStatistics(members) {
-		const stat = [];
+		const stat = {};
 		const rawStat = await Models.AdStats.find({}).lean();
 		
 		for (let item of rawStat) {
@@ -125,10 +125,16 @@ class Ad {
 				nums.push(roles[i] || roles["" + i] || 0)
 			}
 
-			stat.push(`<@${member.user.id}> ` + nums.join("/"));
+			const userKey = (member.user.globalName || member.user.username || "").toLowerCase();
+			stat[userKey] = `<@${member.user.id}> ` + nums.join("/")
 		}
 
-		return stat.join("\n");
+		const keys = Object.keys(stat);
+		keys.sort();
+
+		const resultArr = keys.map((key) => stat[key]);
+
+		return resultArr.join("\n");
 	}
 }
 
