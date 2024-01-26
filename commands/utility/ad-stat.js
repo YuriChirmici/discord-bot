@@ -16,12 +16,11 @@ module.exports = {
 		.setDMPermission(false),
 
 	async execute(interaction, client) {
-		await interaction.reply({ content: "Test update", ephemeral: true });
-		// const guildId = interaction.member.guild.id;
-		// const guild = await client.guilds.fetch(guildId);
-		// const members = await AdService.getGuildMembers(guild);
-		// const stat = await AdService.getStatistics(members);
+		const guildId = interaction.member.guild.id;
+		const guild = await client.guilds.fetch(guildId);
+		const members = await AdService.getGuildMembers(guild);
+		const stat = await AdService.getStatistics(members);
 
-		// await interaction.reply({ content: stat || "Пусто", ephemeral: true });
+		await interaction.reply({ content: stat || "Пусто", ephemeral: true });
 	}
 };
