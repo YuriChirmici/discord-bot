@@ -19,8 +19,6 @@ for (const folder of commandFolders) {
 	}
 }
 
-console.log("Total commands: " + commands.length);
-
 module.exports = {
     commands,
 	getCommandByName(name) {

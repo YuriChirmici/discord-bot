@@ -4,7 +4,8 @@
   "description": "",
   "main": "server.js",
   "scripts": {
-    "start": "nodemon server.js",
+    "dev": "nodemon server.js",
+    "start": "nodemon server.js --delay 10",
     "deploy-commands": "node deploy-commands"
   },
   "author": "",
