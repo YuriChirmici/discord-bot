@@ -1,5 +1,3 @@
-const fs = require("fs");
-const path = require("path");
 const { ad: adConfig } = require("../config.json");
 const { Models } = require("../database");
 

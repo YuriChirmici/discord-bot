@@ -19,7 +19,7 @@ module.exports = {
 		const guildId = interaction.member.guild.id;
 		const guild = await client.guilds.fetch(guildId);
 		await AdService.clearDelayedDeletions();
-		await AdService.deleteAdRoles(guild);
-		await interaction.reply({ content: "Роли очищены!", ephemeral: true });
+		AdService.deleteAdRoles(guild);
+		await interaction.reply({ content: "Роли будут очищены в течение 10 секунд", ephemeral: true });
 	}
 };
