@@ -3,11 +3,13 @@ const { login, client } = require("./client");
 const { connect: dbConnect } = require("./database");
 const { updateApp } = require("./shell-commands");
 
+require("./services/errors");
+
 const update = async () => {
 	try {
 		await updateApp(true);
 	} catch (err) {
-		console.log(err);
+		logError(err);
 	}
 }
 
@@ -18,6 +20,6 @@ const update = async () => {
 		await dbConnect();
 		schedulerStart(client);
 	} catch (err) {
-		console.log(err);
+		logError(err);
 	}
 })();

@@ -4,7 +4,7 @@ const { commandsPermission } = require("../config.json");
 const findCommand = (commands, commandName) => {
 	const command = commands.get(commandName);
 	if (!command) {
-		console.error(`No command matching ${commandName} was found.`);
+		logError(`No command matching ${commandName} was found.`);
 	}
 
 	return command;
@@ -37,7 +37,7 @@ const registerEvents = (client) => {
 		try {
 			await command.execute(interaction, client);
 		} catch (error) {
-			console.error(error);
+			logError(error);
 		}
 	});
 
@@ -55,7 +55,7 @@ const registerEvents = (client) => {
 			await message.delete();
 			await command.execute(message, client);
 		} catch (error) {
-			console.error(error);
+			logError(error);
 		}
 	});
 
@@ -70,7 +70,7 @@ const registerEvents = (client) => {
 		try {
 			await command.buttonClick(interaction);
 		} catch (error) {
-			console.error(error);
+			logError(error);
 		}
 	});
 }

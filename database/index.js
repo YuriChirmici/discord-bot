@@ -20,7 +20,7 @@ module.exports = {
 			await mongoose.connect(database.connectionLink);
 			console.log("Connected to DB successfully");
 		} catch (err) {
-			console.log(err);
+			logError(err);
 		}
 	},
 	Models

@@ -9,7 +9,7 @@ const run = async (client) => {
 	for (let task of tasks) {
 		const command = getCommandByName(task.name);
 		if (!command?.task) {
-			console.log(`Error executing ${task.name}, no command or task`);
+			logError(`Error executing ${task.name}, no command or task`);
 			task.toRemove = true;
 			continue;
 		}
@@ -19,7 +19,7 @@ const run = async (client) => {
 			console.log(`Executed "${task.name}" task`);
 			await Models.Scheduler.deleteOne({ _id: task._id });
 		} catch (err) {
-			console.log("Error executing scheduler task", JSON.stringify(task), err);
+			logError("Error executing scheduler task, " + JSON.stringify(task) + "\n" + err);
 		}
 	}
 }
