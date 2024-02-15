@@ -1,10 +1,10 @@
 const {
 	SlashCommandBuilder,
 	PermissionFlagsBits,
-	AttachmentBuilder
+	EmbedBuilder
 } = require("discord.js");
 const AdService = require("../../services/ad");
-const { commandsPermission } = require("../../config.json");
+const { ad: adConfig, commandsPermission } = require("../../config.json");
 
 const NAME = "ad-stat";
 
@@ -22,7 +22,35 @@ module.exports = {
 		const members = await AdService.getGuildMembers(guild);
 		const stat = await AdService.getStatistics(members);
 
-		let statFile = new AttachmentBuilder(Buffer.from(stat), { name: "stat.txt" });
-		await interaction.reply({ content: "Статистика:", files: [ statFile ], ephemeral: true });
+		const embeds = this.divideTextToEmbeds(stat);
+	
+		await interaction.reply({
+			content: "Статистика:",
+			embeds,
+			ephemeral: true
+		});
+	},
+
+	divideTextToEmbeds(text) {
+		const embeds = [];
+		const rows = text.split("\n");
+		let content = "";
+		let part = 1;
+		for (let i = 0; i < rows.length; i++) {
+			const row = rows[i];
+			content += row + "\n";
+			if (content.length > 1750 || i === rows.length - 1) {
+				const embed = new EmbedBuilder()
+					.setColor(adConfig.color)
+					.setTitle("Часть " + part)
+					.setDescription(content)
+
+				embeds.push(embed);
+				content = "";
+				part++;
+			}
+		}
+
+		return embeds;
 	}
 };
