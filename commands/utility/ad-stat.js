@@ -1,6 +1,7 @@
 const {
 	SlashCommandBuilder,
 	PermissionFlagsBits,
+	AttachmentBuilder
 } = require("discord.js");
 const AdService = require("../../services/ad");
 const { commandsPermission } = require("../../config.json");
@@ -21,6 +22,7 @@ module.exports = {
 		const members = await AdService.getGuildMembers(guild);
 		const stat = await AdService.getStatistics(members);
 
-		await interaction.reply({ content: stat || "Пусто", ephemeral: true });
+		let statFile = new AttachmentBuilder(Buffer.from(stat), { name: "stat.txt" });
+		await interaction.reply({ content: "Статистика:", files: [ statFile ], ephemeral: true });
 	}
 };
