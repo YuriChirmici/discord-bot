@@ -1,5 +1,5 @@
 const { Events, PermissionFlagsBits } = require("discord.js");
-const { commandsPermission } = require("../config.json");
+const { commandsPermission } = require("../../config.json");
 
 const findCommand = (commands, commandName) => {
 	const command = commands.get(commandName);
