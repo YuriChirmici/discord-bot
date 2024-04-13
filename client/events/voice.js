@@ -1,4 +1,4 @@
-const { Events, ChannelType, PermissionsBitField } = require("discord.js");
+const { Events, ChannelType } = require("discord.js");
 const { voiceConnections } = require("../../config.json");
 
 const joinChannel = async ({ client, state }) => {
@@ -12,18 +12,15 @@ const joinChannel = async ({ client, state }) => {
 		type: ChannelType.GuildVoice,
 		name: connection.channelName,
 		parent: connection.categoryId,
-		permissionOverwrites: [
-			{
-				id: state.member.user.id,
-				allow: [
-					PermissionsBitField.Flags.ManageChannels,
-					PermissionsBitField.Flags.ManageRoles
-				],
-			},
-		],
+		userLimit: 10,
 	});
 
 	await state.member.voice.setChannel(channel);
+
+	await channel.permissionOverwrites.create(state.member.user.id, {
+		ManageChannels: true,
+		ManageRoles: true,
+	});
 };
 
 const leaveChannel = async ({ state }) => {
@@ -32,7 +29,7 @@ const leaveChannel = async ({ state }) => {
 		return;
 	}
 
-	if (!Object.keys(state.channel.members).length) {
+	if (state.channel.members.size === 0) {
 		await state.channel.delete();
 	}
 };
