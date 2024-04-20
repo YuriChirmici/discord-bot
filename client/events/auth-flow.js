@@ -4,7 +4,7 @@ const authFlowService = require("../../services/auth-flow");
 const registerEvents = (client) => {
 	client.on(Events.GuildMemberAdd, async (member) => {
 		try {
-            await authFlowService.startFlow(member, client);
+            // await authFlowService.startFlow(member, client);
 		} catch (error) {
 			logError(error);
 		}
