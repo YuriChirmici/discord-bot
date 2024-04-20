@@ -5,7 +5,7 @@ const {
 const { commandsPermission } = require("../../config.json");
 const { updateApp, deployCommands } = require("../../shell-commands");
 
-const NAME = "update-app";
+const NAME = getCommandName(__filename);
 
 module.exports = {
 	name: NAME,

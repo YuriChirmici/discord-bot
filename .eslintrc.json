@@ -9,7 +9,9 @@
 	},
 	"globals": {
 		"logError": true,
-		"getLastErrors": true
+		"getLastErrors": true,
+		"sendLongMessage": true,
+		"getCommandName": true
 	},
 	"rules": {
 		"arrow-spacing": ["warn", { "before": true, "after": true }],

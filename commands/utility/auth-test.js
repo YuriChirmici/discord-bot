@@ -1,8 +1,7 @@
 const { SlashCommandBuilder, PermissionFlagsBits } = require("discord.js");
-const path = require("path");
 const authFlowService = require("../../services/auth-flow");
 
-const NAME = path.basename(__filename).split(".")[0];
+const NAME = getCommandName(__filename);
 
 module.exports = {
 	name: NAME,

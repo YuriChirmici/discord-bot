@@ -13,25 +13,24 @@ const client = new Client({
 	]
 });
 
-client.commands = new Collection();
-commands.forEach((command) => {
-	client.commands.set(command.name, command);
+const startClient = async () => new Promise((resolve) => {
+	client.commands = new Collection();
+	commands.forEach((command) => {
+		client.commands.set(command.name, command);
+	});
+
+	client.once(Events.ClientReady, readyClient => {
+		console.log(`Ready! Logged in as ${readyClient.user.tag}`);
+		resolve();
+	});
+
+	registerEvents(client);
 });
-
-let clientResolve;
-const clientReady = new Promise((resolve) => clientResolve = resolve);
-client.once(Events.ClientReady, readyClient => {
-	console.log(`Ready! Logged in as ${readyClient.user.tag}`);
-	clientResolve();
-});
-
-
-registerEvents(client);
 
 module.exports = {
 	login: async () => {
 		client.login(token);
-		await clientReady;
+		await startClient();
 	},
 	client
 };

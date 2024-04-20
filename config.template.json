@@ -15,7 +15,7 @@
 		],
 		"color": [ 128, 177, 235 ]
 	},
-	"commandsPermission": "SendMessages",
+	"commandsPermission": "ManageRoles",
 	"voiceConnections": [
 		{
 			"channelId": "",

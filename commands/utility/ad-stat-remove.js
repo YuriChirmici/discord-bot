@@ -8,7 +8,7 @@ const {
 const AdService = require("../../services/ad");
 const { commandsPermission } = require("../../config.json");
 
-const NAME = "ad-stat-remove";
+const NAME = getCommandName(__filename);
 
 module.exports = {
 	name: NAME,

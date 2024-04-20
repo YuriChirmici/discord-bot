@@ -1,10 +1,9 @@
+require("./services/globals");
 const { start: schedulerStart } = require("./services/scheduler");
 const { login, client } = require("./client");
 const { connect: dbConnect } = require("./database");
 const { updateApp } = require("./shell-commands");
 const { version } = require("./config");
-
-require("./services/errors");
 
 const update = async () => {
 	try {

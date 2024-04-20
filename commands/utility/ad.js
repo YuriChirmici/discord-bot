@@ -9,7 +9,7 @@ const {
 const AdService = require("../../services/ad");
 const { ad: adConfig, commandsPermission } = require("../../config.json");
 
-const NAME = "ad";
+const NAME = getCommandName(__filename);
 
 const createButton = (id, emoji, style = ButtonStyle.Secondary) => {
 	const customId = `${NAME}_role${id}`;

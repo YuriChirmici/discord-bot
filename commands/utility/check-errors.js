@@ -4,7 +4,7 @@ const {
 } = require("discord.js");
 const { commandsPermission } = require("../../config.json");
 
-const NAME = "check-errors";
+const NAME = getCommandName(__filename);
 
 module.exports = {
 	name: NAME,
