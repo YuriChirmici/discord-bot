@@ -1,13 +1,10 @@
 const { Events, PermissionFlagsBits } = require("discord.js");
 const { commandsPermission } = require("../../config.json");
 const { registerEvents: registerVoiceEvents } = require("./voice");
+const { registerEvents: registerAuthFlowEvents } = require("./auth-flow");
 
 const findCommand = (commands, commandName) => {
 	const command = commands.get(commandName);
-	if (!command) {
-		logError(`No command matching ${commandName} was found.`);
-	}
-
 	return command;
 }
 
@@ -50,6 +47,7 @@ const buttonInteraction = async ({ interaction }) => {
 
 const registerEvents = (client) => {
     registerVoiceEvents(client);
+	registerAuthFlowEvents(client);
 
 	client.on(Events.InteractionCreate, async (interaction) => {
 		try {

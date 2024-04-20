@@ -8,7 +8,6 @@ const NAME = "check-errors";
 
 module.exports = {
 	name: NAME,
-	isCustomCommand: true,
 	data: new SlashCommandBuilder()
 		.setName(NAME)
 		.addStringOption(option => option.setName("count").setDescription("Количество").setRequired(false))

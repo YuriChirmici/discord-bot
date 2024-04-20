@@ -17,10 +17,14 @@ const joinChannel = async ({ client, state }) => {
 
 	await state.member.voice.setChannel(channel);
 
-	await channel.permissionOverwrites.create(state.member.user.id, {
-		ManageChannels: true,
-		ManageRoles: true,
-	});
+	try {
+		await channel.permissionOverwrites.create(state.member.user.id, {
+			ManageChannels: true,
+			ManageRoles: true,
+		});
+	} catch(err) {
+		logError(err);
+	}
 };
 
 const leaveChannel = async ({ state }) => {

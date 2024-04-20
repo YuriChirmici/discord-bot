@@ -32,7 +32,6 @@ const createAd = (title, text) => {
 
 module.exports = {
 	name: NAME,
-	isCustomCommand: true,
 	data: new SlashCommandBuilder()
 		.setName(NAME)
 		.setDescription(

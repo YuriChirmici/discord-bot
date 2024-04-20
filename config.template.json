@@ -23,5 +23,37 @@
 			"channelName": ""
 		}
 	],
-	"version": "1.0.0"
+	"version": "1.0.0",
+	"authFlow": {
+		"categoryId": "",
+		"initialRoles": [ ],
+		"channelName": "📜⌜{{user}}⌟",
+		"resultHeader": "Анкета пользователя {{user}}:",
+		"resultChannelId": "",
+		"questions": [
+			{
+				"id": "question1",
+				"isStart": true,
+				"isSubmit": true,
+				"text": "text",
+				"next": "question2",
+				"textAnswerKey": "nickname",
+				"resultText": "Полк:",
+				"buttons": [
+					{
+						"next": "question2",
+						"text": "btn1",
+						"answerText": "User answer",
+						"url": "https://....",
+						"style": 2,
+						"emoji": "",
+						"roles": [
+							"1231004585594720438"
+						], 
+						"isSubmit": true
+					}
+				]
+			}
+		]
+	}
 }
