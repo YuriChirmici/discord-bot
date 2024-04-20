@@ -1,9 +1,9 @@
 const { exec } = require("child_process");
 
 const runCommand = (command) => new Promise((resolve, reject) => {
-	exec(command, (error, stdout, stderr) => {
-		if (error) {
-			reject(`error: ${error}`);
+	exec(command, (err, stdout, stderr) => {
+		if (err) {
+			reject(`error: ${err}`);
 			return;
 		}
 
@@ -13,12 +13,12 @@ const runCommand = (command) => new Promise((resolve, reject) => {
 
 const fetchGitChanges = async () => {
 	const result = await runCommand("git pull");
-	return !result.includes("Already up to date.")
-}
+	return !result.includes("Already up to date.");
+};
 
 const deployCommands = async () => {
 	await runCommand("npm run deploy-commands");
-}
+};
 
 const updateApp = async (full) => {
 	const hasUpdates = await fetchGitChanges();
@@ -28,10 +28,10 @@ const updateApp = async (full) => {
 	}
 
 	return hasUpdates;
-}
+};
 
 module.exports = {
 	runCommand,
 	deployCommands,
 	updateApp
-}
+};

@@ -6,7 +6,7 @@ const { registerEvents: registerAuthFlowEvents } = require("./auth-flow");
 const findCommand = (commands, commandName) => {
 	const command = commands.get(commandName);
 	return command;
-}
+};
 
 const parseCustomArgs = (message) => {
 	const args = [];
@@ -18,12 +18,12 @@ const parseCustomArgs = (message) => {
 		} else if (c === "{") {
 			arg = "";
 		} else {
-			arg += c
+			arg += c;
 		}
 	}
 
 	return args;
-}
+};
 
 const chatInputCommand = async ({ interaction, client }) => {
 	const command = findCommand(interaction.client.commands, interaction.commandName);
@@ -32,21 +32,21 @@ const chatInputCommand = async ({ interaction, client }) => {
 	}
 
 	await command.execute(interaction, client);
-}
+};
 
 const buttonInteraction = async ({ interaction }) => {
 	const customId = interaction.customId;
-	interaction.commandName = customId.split("_")[0]
+	interaction.commandName = customId.split("_")[0];
 	const command = findCommand(interaction.client.commands, interaction.commandName);
 	if (!command) {
 		return;
 	}
 
 	await command.buttonClick(interaction);
-}
+};
 
 const registerEvents = (client) => {
-    registerVoiceEvents(client);
+	registerVoiceEvents(client);
 	registerAuthFlowEvents(client);
 
 	client.on(Events.InteractionCreate, async (interaction) => {
@@ -58,8 +58,8 @@ const registerEvents = (client) => {
 			} else if (interaction.isButton()) {
 				return await buttonInteraction(args);
 			}
-		} catch (error) {
-			logError(error);
+		} catch (err) {
+			logError(err);
 		}
 	});
 
@@ -74,17 +74,17 @@ const registerEvents = (client) => {
 			const commandName = argsArr.shift().substring(1);
 			const command = findCommand(client.commands, commandName);
 			if (!command) return;
-	
+
 			message.customArgs = parseCustomArgs(argsArr.join(" "));
 
 			await message.delete();
 			await command.execute(message, client);
-		} catch (error) {
-			logError(error);
+		} catch (err) {
+			logError(err);
 		}
 	});
-}
+};
 
 module.exports = {
 	registerEvents
-}
+};

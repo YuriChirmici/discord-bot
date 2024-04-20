@@ -12,7 +12,7 @@ const update = async () => {
 	} catch (err) {
 		logError(err);
 	}
-}
+};
 
 (async () => {
 	try {

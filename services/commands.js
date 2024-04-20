@@ -20,8 +20,8 @@ for (const folder of commandFolders) {
 }
 
 module.exports = {
-    commands,
+	commands,
 	getCommandByName(name) {
 		return commands.find((command) => command.name === name);
 	}
-}
+};

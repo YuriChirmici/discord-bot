@@ -19,7 +19,7 @@ module.exports = {
 		.setDMPermission(false),
 
 	async execute(interaction) {
-		const customId = `${NAME}_confirm`
+		const customId = `${NAME}_confirm`;
 		const confirm = new ButtonBuilder()
 			.setCustomId(customId)
 			.setStyle(ButtonStyle.Danger)

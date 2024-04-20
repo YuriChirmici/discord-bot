@@ -4,7 +4,7 @@ const { Models } = require("../database");
 const INTERVAL = 60 * 1000;
 
 const run = async (client) => {
-	const tasks = await Models.Scheduler.find({ executionDate: { $lt: new Date }});
+	const tasks = await Models.Scheduler.find({ executionDate: { $lt: new Date } });
 
 	for (let task of tasks) {
 		const command = getCommandByName(task.name);
@@ -22,11 +22,11 @@ const run = async (client) => {
 			logError("Error executing scheduler task, " + JSON.stringify(task) + "\n" + err);
 		}
 	}
-}
+};
 
 module.exports = {
 	start(client) {
 		run(client);
 		setInterval(() => run(client), INTERVAL);
 	}
-}
+};

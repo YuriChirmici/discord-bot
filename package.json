@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "nodemon server.js",
     "start": "nodemon server.js --delay 10",
-    "deploy-commands": "node deploy-commands"
+    "deploy-commands": "node deploy-commands",
+    "eslint": "npx eslint ."
   },
   "author": "",
   "license": "ISC",
@@ -15,7 +16,9 @@
     "mongoose": "^8.1.0"
   },
   "devDependencies": {
-    "eslint": "^8.56.0",
+    "@eslint/js": "^9.1.1",
+    "eslint": "^8.57.0",
+    "globals": "^15.0.0",
     "nodemon": "^3.0.3"
   }
 }

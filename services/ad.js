@@ -5,7 +5,7 @@ class Ad {
 	static async changeRole(newRole, member) {
 		let roleCleared = false;
 		const promises = [];
-	
+
 		for (let role of adConfig.roles) {
 			const userRole = member.roles.cache.find(r => r.name === role.name);
 			if (role.name !== newRole.name) {
@@ -14,7 +14,7 @@ class Ad {
 				}
 				continue;
 			}
-	
+
 			if (userRole) {
 				promises.push(member.roles.remove(userRole));
 				roleCleared = true;
@@ -22,9 +22,9 @@ class Ad {
 				promises.push(member.roles.add(newRole));
 			}
 		}
-	
+
 		await Promise.all(promises);
-	
+
 		return roleCleared;
 	}
 
@@ -42,7 +42,7 @@ class Ad {
 
 	static getMemberAdRoles(member) {
 		const roles = [];
-	
+
 		for (let i = 0; i < adConfig.roles.length; i++) {
 			const adRole = adConfig.roles[i];
 			const foundRole = member.roles.cache.find((role) => role.name === adRole.name);
@@ -50,7 +50,7 @@ class Ad {
 				roles.push(adRole);
 			}
 		}
-	
+
 		return roles;
 	}
 
@@ -80,10 +80,10 @@ class Ad {
 						await new Promise(r => setTimeout(r, 1000));
 					}
 				}
-				
+
 				this.addStatRole(memberStat, role);
-			};
-	
+			}
+
 			if (saveStat && Object.keys(memberStat).length) {
 				this.saveStats(member.id, memberStat);
 			}
@@ -95,9 +95,9 @@ class Ad {
 	static async saveStats(memberId, roles) {
 		const existed = await Models.AdStats.findOne({ memberId });
 		if (existed) {
-			await Models.AdStats.updateOne({ memberId }, { roles })
+			await Models.AdStats.updateOne({ memberId }, { roles });
 		} else {
-			await  Models.AdStats.create({ memberId, roles});
+			await Models.AdStats.create({ memberId, roles });
 		}
 	}
 
@@ -113,18 +113,18 @@ class Ad {
 	static async getStatistics(members) {
 		const stat = {};
 		const rawStat = await Models.AdStats.find({}).lean();
-		
+
 		for (let item of rawStat) {
 			const member = members.find(({ id }) => id === item.memberId);
 			if (!member) continue;
 			const roles = item.roles || {};
 			const nums = [];
 			for (let i = 0; i < adConfig.roles.length; i++) {
-				nums.push(roles[i] || roles["" + i] || 0)
+				nums.push(roles[i] || roles["" + i] || 0);
 			}
 
 			const userKey = (member.user.globalName || member.user.username || "").toLowerCase();
-			stat[userKey] = `<@${member.user.id}> ` + nums.join("/")
+			stat[userKey] = `<@${member.user.id}> ` + nums.join("/");
 		}
 
 		const keys = Object.keys(stat);

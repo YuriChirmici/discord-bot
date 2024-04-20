@@ -15,7 +15,7 @@ for (const file of modelFiles) {
 }
 
 module.exports = {
-	connect: async() => {
+	connect: async () => {
 		try {
 			await mongoose.connect(database.connectionLink);
 			console.log("Connected to DB successfully");

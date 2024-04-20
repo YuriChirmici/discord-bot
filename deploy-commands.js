@@ -5,7 +5,7 @@ const { commands } = require("./services/commands");
 const deployCommands = [];
 
 commands.forEach((command) => {
-    deployCommands.push(command.data.toJSON());
+	deployCommands.push(command.data.toJSON());
 });
 
 const rest = new REST().setToken(token);
@@ -20,7 +20,7 @@ const rest = new REST().setToken(token);
 		);
 
 		console.log(`Successfully reloaded ${data.length} application (/) commands.`);
-	} catch (error) {
-		console.error(error);
+	} catch (err) {
+		console.error(err);
 	}
 })();

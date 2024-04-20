@@ -22,7 +22,7 @@ const joinChannel = async ({ client, state }) => {
 			ManageChannels: true,
 			ManageRoles: true,
 		});
-	} catch(err) {
+	} catch (err) {
 		logError(err);
 	}
 };
@@ -44,16 +44,16 @@ const registerEvents = (client) => {
 			if (oldState.channelId) {
 				await leaveChannel({ state: oldState });
 			}
-			
-			if (newState.channelId) {		
+
+			if (newState.channelId) {
 				await joinChannel({ client,	state: newState });
 			}
-		} catch (error) {
-			logError(error);
+		} catch (err) {
+			logError(err);
 		}
 	});
-}
+};
 
 module.exports = {
 	registerEvents
-}
+};

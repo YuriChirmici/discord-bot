@@ -9,13 +9,15 @@ const { authFlow: authFlowConfig, ad: adConfig } = require("../config.json");
 const { Models } = require("../database");
 
 class AuthFlowService {
-	NAME = "AuthFlow";
+	constructor() {
+		this.NAME = "AuthFlow";
+	}
 
 	async startFlow(member, client) {
-		const memberId =  member.id;
+		const memberId = member.id;
 
 		await this.clearOldMemberData(client, memberId);
-	
+
 		const promises = [ this.createChannel(member) ];
 		if (authFlowConfig.initialRoles) {
 			promises.push(member.roles.add(authFlowConfig.initialRoles));
@@ -57,7 +59,7 @@ class AuthFlowService {
 			memberId,
 			channelId,
 			answers: [],
-		})
+		});
 	}
 
 	async sendQuestion({ dbRecord, client, question, channel, interaction }) {
@@ -81,7 +83,7 @@ class AuthFlowService {
 	_prepareMessage(question, { memberId }) {
 		const buttons = (question.buttons || []).map((data, index) =>
 			this._createButton({ ...data, index, questionId: question.id })
-		)
+		);
 		let components;
 		if (buttons.length) {
 			components = [ new ActionRowBuilder().addComponents(...buttons) ];
@@ -90,7 +92,7 @@ class AuthFlowService {
 		return {
 			components,
 			content: (question.text || "").replace("@User", `<@${memberId}>`),
-		}
+		};
 	}
 
 	_createButton({ text, emoji, style, url, index, questionId, disabled }) {
@@ -115,9 +117,9 @@ class AuthFlowService {
 		if (disabled) {
 			button = button.setDisabled(true);
 		}
-			
+
 		return button;
-	};
+	}
 
 	async buttonClick({ interaction, client }) {
 		const channel = interaction.channel;
@@ -130,24 +132,26 @@ class AuthFlowService {
 		const question = this._getQuestionById(questionId);
 		const btn = question?.buttons?.[buttonIndex];
 		if (!question || !btn) {
-			return; // unexpected
+			// unexpected
+			return;
 		}
 
 		let dbRecord = await Models.AuthFlow.findOne({ memberId }).lean();
 		let answers = dbRecord.answers;
 
-		if (questionId !== dbRecord.currentQuestionId) { // clicked button in prev questions
+		if (questionId !== dbRecord.currentQuestionId) {
+			// clicked button in prev questions
 			const answerIndex = dbRecord.answers.findIndex((a) => a.questionId === questionId);
 			if (answerIndex >= 0) {
 				answers = dbRecord.answers.slice(0, answerIndex);
-				await this.removeMessagesAfterDate(channel, interaction.message.createdTimestamp)
+				await this.removeMessagesAfterDate(channel, interaction.message.createdTimestamp);
 			}
 		}
 
 		answers.push({ questionId: question.id, buttonIndex });
 
 		dbRecord = await Models.AuthFlow.findOneAndUpdate({ memberId }, { answers }, { new: true });
-	
+
 		if (btn.next) {
 			const nextQuestion = this._getQuestionById(btn.next);
 			await this.sendQuestion({ dbRecord, client, question: nextQuestion, interaction, channel });
@@ -174,7 +178,7 @@ class AuthFlowService {
 				const button = question.buttons[buttonIndex];
 				allRoles.push(...(button.roles || []));
 			}
-		})
+		});
 
 		const promises = [
 			channel.delete(),
@@ -188,9 +192,9 @@ class AuthFlowService {
 		}
 
 		if (nickname) {
-			promises.push(member.setNickname(nickname))
+			promises.push(member.setNickname(nickname));
 		}
-		
+
 		await Promise.all(promises);
 	}
 
@@ -206,10 +210,11 @@ class AuthFlowService {
 		const messageText = message.content.trim();
 		const channel = message.channel;
 		const memberId = message.member.id;
-		
+
 		let dbRecord = await Models.AuthFlow.findOne({ memberId, channelId: channel.id }).lean();
 		const currentQuestionId = dbRecord?.currentQuestionId;
-		if (!currentQuestionId) { // message in other channels
+		if (!currentQuestionId) {
+			// message in other channels
 			return;
 		}
 
@@ -224,13 +229,13 @@ class AuthFlowService {
 				key: question.textAnswerKey,
 				text: messageText,
 			}
-		} }}, { new: true });
+		} } }, { new: true });
 
 		if (question.next) {
 			const nextQuestion = this._getQuestionById(question.next);
 			await this.sendQuestion({ dbRecord, client, question: nextQuestion, channel });
 		} else if (question.isSubmit) {
-			await this.submit({ dbRecord, member: message.member, channel: message.channel, client} );
+			await this.submit({ dbRecord, member: message.member, channel: message.channel, client });
 		}
 	}
 
@@ -243,21 +248,21 @@ class AuthFlowService {
 
 		dbRecord.answers.forEach(({ questionId, buttonIndex, textAnswer }) => {
 			const question = this._getQuestionById(questionId);
-			result += `Q: ${question.resultText || question.text || ""}:\nA: `
+			result += `Q: ${question.resultText || question.text || ""}:\nA: `;
 			if (buttonIndex || buttonIndex === 0) {
 				const button = question.buttons[buttonIndex];
 				result += `${button.emoji || ""} ${button.answerText || button.text || ""}`.trim();
 			} else if (textAnswer?.text) {
 				result += textAnswer.text;
 			}
-			
+
 			result += "\n\n";
 		});
 
 		const embed = new EmbedBuilder()
 			.setColor(adConfig.color)
 			.setTitle(resultHeader || "Title")
-			.setDescription(result)
+			.setDescription(result);
 
 		await channel.send({ embeds: [ embed ] });
 	}

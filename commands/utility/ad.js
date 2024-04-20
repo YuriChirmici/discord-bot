@@ -12,12 +12,12 @@ const { ad: adConfig, commandsPermission } = require("../../config.json");
 const NAME = "ad";
 
 const createButton = (id, emoji, style = ButtonStyle.Secondary) => {
-	const customId = `${NAME}_role${id}`
+	const customId = `${NAME}_role${id}`;
 	const button = new ButtonBuilder()
 		.setCustomId(customId)
 		.setStyle(style)
 		.setEmoji(emoji);
-		
+
 	return button;
 };
 
@@ -25,10 +25,10 @@ const createAd = (title, text) => {
 	const ad = new EmbedBuilder()
 		.setColor(adConfig.color)
 		.setTitle(title)
-		.setDescription(text)
+		.setDescription(text);
 
 	return ad;
-}
+};
 
 module.exports = {
 	name: NAME,
@@ -57,19 +57,19 @@ module.exports = {
 		let content = "";
 		if (message.customArgs.length === 4) {
 			content = text;
-			text = message.customArgs[3]
+			text = message.customArgs[3];
 		}
 
 		const buttons = [];
 		for (let i = 0; i < adConfig.roles.length; i++) {
-			buttons.push(createButton(i, adConfig.roles[i].emoji))
+			buttons.push(createButton(i, adConfig.roles[i].emoji));
 		}
 
 		const row = new ActionRowBuilder()
 			.addComponents(...buttons);
 
 		const ad = createAd(header, text);
-		
+
 		await AdService.clearDelayedDeletions();
 		const taskDate = Date.now() + time * 60 * 1000;
 		await AdService.addDelayedDeletion({ guildId: message.guildId }, taskDate, NAME);

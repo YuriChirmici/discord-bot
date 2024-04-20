@@ -23,7 +23,7 @@ module.exports = {
 		const stat = await AdService.getStatistics(members);
 
 		const embeds = this.divideTextToEmbeds(stat);
-	
+
 		await interaction.reply({
 			content: "Статистика:",
 			embeds,
@@ -43,7 +43,7 @@ module.exports = {
 				const embed = new EmbedBuilder()
 					.setColor(adConfig.color)
 					.setTitle("Часть " + part)
-					.setDescription(content)
+					.setDescription(content);
 
 				embeds.push(embed);
 				content = "";
