@@ -38,6 +38,8 @@
 				"isSubmit": true,
 				"text": "text",
 				"next": "question2",
+				"skipAnswer": true,
+				"withTextAnswer": true,
 				"textAnswerKey": "nickname",
 				"resultText": "Полк:",
 				"buttons": [

@@ -73,7 +73,8 @@ class AuthFlowService {
 
 		await channel.send(message);
 
-		if (question.next && !question.textAnswerKey) {
+		if (question.next && question.skipAnswer) {
+			// for cases when we should send next question immediately after previous one
 			const nextQuestion = this._getQuestionById(question.next);
 			await this.sendQuestion({ dbRecord, client, question: nextQuestion, channel });
 		} else {
@@ -220,6 +221,10 @@ class AuthFlowService {
 		}
 
 		const question = this._getQuestionById(currentQuestionId);
+		if (question.withTextAnswer && !question.textAnswerKey) {
+			question.textAnswerKey = "id_" + Date.now();
+		}
+
 		if (!question.textAnswerKey) {
 			return;
 		}
