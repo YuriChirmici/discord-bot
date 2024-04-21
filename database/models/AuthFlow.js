@@ -15,6 +15,7 @@ const AuthFlowSchema = new mongoose.Schema({
 	answers: [ AnswerSchema ],
 	completed: Boolean,
 	currentQuestionId: String,
+	questions: [ Object ],
 	dateUpdated: { type: Date, default: new Date() }
 }).index({ memberId: 1 });
 

@@ -59,6 +59,7 @@ class AuthFlowService {
 			memberId,
 			channelId,
 			answers: [],
+			questions: authFlowConfig.questions
 		});
 	}
 
@@ -248,6 +249,10 @@ class AuthFlowService {
 
 		dbRecord.answers.forEach(({ questionId, buttonIndex, textAnswer }) => {
 			const question = this._getQuestionById(questionId);
+			if (question.hideInResult) {
+				return;
+			}
+
 			result += `Q: ${question.resultText || question.text || ""}:\nA: `;
 			if (buttonIndex || buttonIndex === 0) {
 				const button = question.buttons[buttonIndex];
