@@ -1,5 +1,4 @@
 /node_modules
+/src
 config.json
-config.mine.json
-config.vlad.json
 .vscode/*
