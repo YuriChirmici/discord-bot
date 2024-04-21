@@ -82,7 +82,9 @@ class Ad {
 				const message = await channel.messages.fetch(messageId);
 				await message.delete();
 			} catch (err) {
-				logError(err);
+				if (![ "Unknown Channel", "Unknown Message" ].includes(err.message)) {
+					logError(err);
+				}
 			}
 		}
 	}

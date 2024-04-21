@@ -34,8 +34,9 @@ const createAd = (title, text) => {
 const customArgs = {
 	title: { required: true },
 	timer: { required: true, type: "number" },
-	text: { },
+	text: {},
 	content: { required: true },
+	channelId: {},
 };
 
 module.exports = {
@@ -54,7 +55,7 @@ module.exports = {
 			return await message.reply("Используй команду !" + NAME);
 		}
 
-		const { title = "", text = "", content = "" } = message.customArgs;
+		const { title = "", text = "", content = "", channelId } = message.customArgs;
 		const timer = Number.parseInt(message.customArgs.timer);
 		const ad = createAd(title, text);
 		const buttons = adConfig.roles.map((role, i) => createButton(i, role.emoji));
@@ -67,7 +68,8 @@ module.exports = {
 		}
 
 		await adService.runAdDeletionTasks(client);
-		const adMessage = await message.channel.send({
+		const targetChannel = (await this._prepareTargetChannel(client, channelId)) || message.channel;
+		const adMessage = await targetChannel.send({
 			embeds: [ ad ],
 			components: [ buttonsRow ],
 			content
@@ -78,6 +80,20 @@ module.exports = {
 			messageId: adMessage.id,
 			channelId: adMessage.channel.id
 		}, Date.now() + timer * 60 * 1000);
+	},
+
+	async _prepareTargetChannel(client, channelId) {
+		if (!channelId) {
+			return;
+		}
+
+		try {
+			return await client.channels.fetch(channelId);
+		} catch (err) {
+			if (err.message !== "Unknown Channel") {
+				logError(err);
+			}
+		}
 	},
 
 	async buttonClick(interaction) {
