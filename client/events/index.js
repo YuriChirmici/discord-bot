@@ -8,13 +8,12 @@ const findCommand = (commands, commandName) => {
 	return command;
 };
 
-const parseCustomArgs = (message) => {
-	const args = [];
-
+const parseCustomArgs = (message, commandArgs) => {
+	const argsArr = [];
 	let arg = "";
 	for (let c of message) {
 		if (c === "}") {
-			args.push(arg.trim());
+			argsArr.push(arg.trim());
 		} else if (c === "{") {
 			arg = "";
 		} else {
@@ -22,7 +21,30 @@ const parseCustomArgs = (message) => {
 		}
 	}
 
-	return args;
+	const result = {};
+	for (let argStr of argsArr) {
+		const parts = argStr.split("=");
+		const key = parts.shift().trim();
+		let value = parts.join("=").trim();
+		if (commandArgs[key].type === "number") {
+			value = Number.parseFloat(value);
+		}
+		result[key] = value;
+	}
+
+	return result;
+};
+
+// for custom commands
+const getMissingArgs = (commandArgs = {}, messageArgs = {}) => {
+	const missingArgs = [];
+	for (let key in commandArgs) {
+		if (commandArgs[key].required && !messageArgs[key]) {
+			missingArgs.push(key);
+		}
+	}
+
+	return missingArgs;
 };
 
 const chatInputCommand = async ({ interaction, client }) => {
@@ -78,10 +100,16 @@ const registerEvents = (client) => {
 				return;
 			}
 
-			message.customArgs = parseCustomArgs(argsArr.join(" "));
+			const messageArgs = parseCustomArgs(argsArr.join(" "), command.customArgs);
+			const missingArgs = getMissingArgs(command.customArgs, messageArgs);
+			if (missingArgs.length) {
+				await message.reply("Отсутвтуют обязательные параметры: " + missingArgs.join(", "));
+				return;
+			}
 
-			await message.delete();
+			message.customArgs = messageArgs;
 			await command.execute(message, client);
+			await message.delete();
 		} catch (err) {
 			logError(err);
 		}

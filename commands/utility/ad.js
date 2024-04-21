@@ -8,6 +8,7 @@ const {
 } = require("discord.js");
 const adService = require("../../services/ad");
 const { ad: adConfig, commandsPermission } = require("../../config.json");
+const { Models } = require("../../database");
 
 const NAME = getCommandName(__filename);
 
@@ -30,63 +31,53 @@ const createAd = (title, text) => {
 	return ad;
 };
 
+const customArgs = {
+	title: { required: true },
+	timer: { required: true, type: "number" },
+	text: { },
+	content: { required: true },
+};
+
 module.exports = {
 	name: NAME,
+	customArgs,
 	data: new SlashCommandBuilder()
 		.setName(NAME)
 		.setDescription(
-			`Используй !${NAME}. Создает объявление. !ad {Заголовок} {Время в минутах} {текст (optional)} {содержание}`
+			`Используй !${NAME}. Создает объявление. Параметры: ${Object.keys(customArgs).join(", ")}`
 		)
 		.setDefaultMemberPermissions(PermissionFlagsBits[commandsPermission])
 		.setDMPermission(false),
 
 	async execute(message, client) {
 		if (!message.customArgs) {
-			await message.reply("Используй команду с !");
-			return;
+			return await message.reply("Используй команду !" + NAME);
 		}
 
-		if (message.customArgs.length < 3) {
-			await message.reply("Неправильные аргументы");
-			return;
-		}
-
-		const header = message.customArgs[0] || "";
-		const time = Number.parseInt(message.customArgs[1]);
-		let text = message.customArgs[2] || "";
-		let content = "";
-		if (message.customArgs.length === 4) {
-			content = text;
-			text = message.customArgs[3];
-		}
-
-		const buttons = [];
-		for (let i = 0; i < adConfig.roles.length; i++) {
-			buttons.push(createButton(i, adConfig.roles[i].emoji));
-		}
-
-		const row = new ActionRowBuilder()
+		const { title = "", text = "", content = "" } = message.customArgs;
+		const timer = Number.parseInt(message.customArgs.timer);
+		const ad = createAd(title, text);
+		const buttons = adConfig.roles.map((role, i) => createButton(i, role.emoji));
+		const buttonsRow = new ActionRowBuilder()
 			.addComponents(...buttons);
 
-		const ad = createAd(header, text);
+		const task = await Models.Scheduler.findOne({ name: adService.deletionTaskName });
+		if (task) {
+			await message.channel.send("Объявление будет создано после очистки предыдущего.");
+		}
 
+		await adService.runAdDeletionTasks(client);
 		const adMessage = await message.channel.send({
 			embeds: [ ad ],
-			components: [ row ],
+			components: [ buttonsRow ],
 			content
 		});
 
-		await this._addSchedulerTask({
-			taskDate: Date.now() + time * 60 * 1000,
+		await adService.addDelayedDeletion({
 			guildId: message.guildId,
 			messageId: adMessage.id,
 			channelId: adMessage.channel.id
-		}, client);
-	},
-
-	async _addSchedulerTask({ taskDate, guildId, messageId, channelId }, client) {
-		await adService.runAdDeletionTasks(client);
-		await adService.addDelayedDeletion({ guildId, messageId, channelId }, taskDate);
+		}, Date.now() + timer * 60 * 1000);
 	},
 
 	async buttonClick(interaction) {
