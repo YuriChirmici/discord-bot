@@ -6,7 +6,7 @@ const {
 	ButtonBuilder,
 	ButtonStyle
 } = require("discord.js");
-const AdService = require("../../services/ad");
+const adService = require("../../services/ad");
 const { ad: adConfig, commandsPermission } = require("../../config.json");
 
 const NAME = getCommandName(__filename);
@@ -40,14 +40,14 @@ module.exports = {
 		.setDefaultMemberPermissions(PermissionFlagsBits[commandsPermission])
 		.setDMPermission(false),
 
-	async execute(message) {
+	async execute(message, client) {
 		if (!message.customArgs) {
-			await message.channel.send("Используй команду с !");
+			await message.reply("Используй команду с !");
 			return;
 		}
 
 		if (message.customArgs.length < 3) {
-			await message.channel.send("Неправильные аргументы");
+			await message.reply("Неправильные аргументы");
 			return;
 		}
 
@@ -70,24 +70,33 @@ module.exports = {
 
 		const ad = createAd(header, text);
 
-		await AdService.clearDelayedDeletions();
-		const taskDate = Date.now() + time * 60 * 1000;
-		await AdService.addDelayedDeletion({ guildId: message.guildId }, taskDate, NAME);
-
-		await message.channel.send({
-			embeds: [ad],
-			components: [row],
+		const adMessage = await message.channel.send({
+			embeds: [ ad ],
+			components: [ row ],
 			content
 		});
+
+		await this._addSchedulerTask({
+			taskDate: Date.now() + time * 60 * 1000,
+			guildId: message.guildId,
+			messageId: adMessage.id,
+			channelId: adMessage.channel.id
+		}, client);
+	},
+
+	async _addSchedulerTask({ taskDate, guildId, messageId, channelId }, client) {
+		await adService.runAdDeletionTasks(client);
+		await adService.addDelayedDeletion({ guildId, messageId, channelId }, taskDate);
 	},
 
 	async buttonClick(interaction) {
-		const roleNum = interaction.customId[interaction.customId.length - 1];
-		const roleName = adConfig.roles[+roleNum].name;
-		const role = interaction.member.guild.roles.cache.find(r => r.name == roleName);
+		const member = interaction.member;
+		const roleIndex = +interaction.customId[interaction.customId.length - 1];
+		const configRole = adConfig.roles[+roleIndex];
+		const role = member.guild.roles.cache.find(r => r.id == configRole.id);
 
-		const roleCleared = await AdService.changeRole(role, interaction.member);
-		const message = roleCleared ? "Роль очищена" : "Роль изменена на " + roleName;
+		const roleCleared = await adService.changeRole(role, member);
+		const message = roleCleared ? `Роль '${role.name}' очищена` : `Роль изменена на '${role.name}'`;
 
 		await interaction.reply({
 			content: message,
@@ -96,7 +105,6 @@ module.exports = {
 	},
 
 	async task(data, client) {
-		const guild = await client.guilds.fetch(data.guildId);
-		await AdService.deleteAdRoles(guild);
+		await adService.closeAd(data, client);
 	}
 };

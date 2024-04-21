@@ -1,7 +1,7 @@
 const { getCommandByName } = require("./commands");
 const { Models } = require("../database");
 
-const INTERVAL = 60 * 1000;
+const INTERVAL = 3 * 60 * 1000;
 
 const run = async (client) => {
 	const tasks = await Models.Scheduler.find({ executionDate: { $lt: new Date } });
@@ -10,7 +10,6 @@ const run = async (client) => {
 		const command = getCommandByName(task.name);
 		if (!command?.task) {
 			logError(`Error executing ${task.name}, no command or task`);
-			task.toRemove = true;
 			continue;
 		}
 

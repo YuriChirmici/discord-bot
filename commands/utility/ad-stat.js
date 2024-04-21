@@ -3,7 +3,7 @@ const {
 	PermissionFlagsBits,
 	EmbedBuilder
 } = require("discord.js");
-const AdService = require("../../services/ad");
+const adService = require("../../services/ad");
 const { ad: adConfig, commandsPermission } = require("../../config.json");
 
 const NAME = "ad-stat";
@@ -19,8 +19,8 @@ module.exports = {
 	async execute(interaction, client) {
 		const guildId = interaction.member.guild.id;
 		const guild = await client.guilds.fetch(guildId);
-		const members = await AdService.getGuildMembers(guild);
-		const stat = await AdService.getStatistics(members);
+		const members = await adService.getGuildMembers(guild);
+		const stat = await adService.getStatistics(members);
 
 		const embeds = this.divideTextToEmbeds(stat);
 

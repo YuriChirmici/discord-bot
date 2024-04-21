@@ -7,11 +7,11 @@
 	},
 	"ad": {
 		"roles": [ 
-			{ "name": "", "emoji": "" },
-			{ "name": "", "emoji": "" },
-			{ "name": "", "emoji": "" },
-			{ "name": "", "emoji": "" },
-			{ "name": "", "emoji": "", "save": true }
+			{ "id": "", "emoji": "" },
+			{ "id": "", "emoji": "" },
+			{ "id": "", "emoji": "" },
+			{ "id": "", "emoji": "" },
+			{ "id": "", "emoji": "", "save": true }
 		],
 		"color": [ 128, 177, 235 ]
 	},

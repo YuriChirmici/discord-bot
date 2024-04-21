@@ -2,97 +2,149 @@ const { ad: adConfig } = require("../config.json");
 const { Models } = require("../database");
 
 class Ad {
-	static async changeRole(newRole, member) {
+	constructor() {
+		this.deletionTaskName = "ad";
+	}
+
+	async changeRole(role, member) {
 		let roleCleared = false;
-		const promises = [];
+		const rolesForAdd = [];
+		const rolesForRemove = [];
 
-		for (let role of adConfig.roles) {
-			const userRole = member.roles.cache.find(r => r.name === role.name);
-			if (role.name !== newRole.name) {
-				if (userRole) {
-					promises.push(member.roles.remove(userRole));
+		for (let { id } of adConfig.roles) {
+			const userRole = member.roles.cache.find(r => r.id === id);
+			if (role.id === id) {
+				if (!userRole) {
+					rolesForAdd.push(id);
+					continue;
+				} else {
+					rolesForRemove.push(id);
+					roleCleared = true;
 				}
-				continue;
-			}
-
-			if (userRole) {
-				promises.push(member.roles.remove(userRole));
-				roleCleared = true;
-			} else {
-				promises.push(member.roles.add(newRole));
+			} else if (userRole) {
+				rolesForRemove.push(id);
 			}
 		}
 
-		await Promise.all(promises);
+		if (rolesForRemove.length) {
+			await member.roles.remove(rolesForRemove);
+		}
+
+		if (rolesForAdd.length) {
+			await member.roles.add(rolesForAdd);
+		}
 
 		return roleCleared;
 	}
 
-	static async addDelayedDeletion(taskData, date, name) {
+	async addDelayedDeletion(taskData, date) {
 		await Models.Scheduler.create({
-			name,
+			name: this.deletionTaskName,
 			executionDate: date,
 			data: taskData
 		});
 	}
 
-	static async clearDelayedDeletions() {
-		await Models.Scheduler.deleteMany({ name: "ad" });
+	async runAdDeletionTasks(client) {
+		const tasks = await Models.Scheduler.find({ name: this.deletionTaskName });
+		const promises = tasks.map((task) => this.closeAd(task.data, client));
+
+		await Promise.all([
+			...promises,
+			Models.Scheduler.deleteMany({ name: this.deletionTaskName })
+		]);
 	}
 
-	static getMemberAdRoles(member) {
+	getMemberAdRoles(member) {
 		const roles = [];
-
-		for (let i = 0; i < adConfig.roles.length; i++) {
-			const adRole = adConfig.roles[i];
-			const foundRole = member.roles.cache.find((role) => role.name === adRole.name);
+		for (let configRole of adConfig.roles) {
+			const foundRole = member.roles.cache.find((role) => role.id === configRole.id);
 			if (foundRole) {
-				roles.push(adRole);
+				roles.push(configRole);
 			}
 		}
 
 		return roles;
 	}
 
-	static async getGuildMembers(guild) {
+	async getGuildMembers(guild) {
 		const members = await guild.members.fetch();
-		const prepared = [];
-		for (let member of members) {
-			prepared.push(member[1]);
-		}
-		return prepared;
+		return Array.from(members.values());
 	}
 
-	static async deleteAdRoles(guild, saveStat = true) {
-		const members = await this.getGuildMembers(guild);
+	async closeAd({ guildId, messageId, channelId }, client) {
+		const guild = await client.guilds.fetch(guildId);
+		await this.deleteAdRoles(guild);
+
+		if (channelId && messageId) {
+			try {
+				const channel = await client.channels.fetch(channelId);
+				const message = await channel.messages.fetch(messageId);
+				await message.delete();
+			} catch (err) {
+				logError(err);
+			}
+		}
+	}
+
+	async deleteAdRoles(guild) {
+		const [ members, dbStats ] = await Promise.all([
+			this.getGuildMembers(guild),
+			Models.AdStats.find({}).lean()
+		]);
+
 		const promises = [];
-		const stat = await Models.AdStats.find({}).lean();
 
 		for (let member of members) {
-			const adRoles = this.getMemberAdRoles(member);
-			const memberStat = stat.find(({ memberId }) => memberId === member.id)?.roles || {};
+			const memberAdRoles = this.getMemberAdRoles(member);
+			const memberStat = dbStats.find(({ memberId }) => memberId === member.id)?.roles || {};
+			const rolesForRemove = [];
 
-			for (let role of adRoles) {
-				const guildRole = guild.roles.cache.find(({ name }) => role.name === name);
+			for (let role of memberAdRoles) {
 				if (!role.save) {
-					promises.push(member.roles.remove(guildRole));
-					if (promises.length % 30 === 0) {
-						await new Promise(r => setTimeout(r, 1000));
-					}
+					rolesForRemove.push(role.id);
 				}
 
 				this.addStatRole(memberStat, role);
 			}
 
-			if (saveStat && Object.keys(memberStat).length) {
-				this.saveStats(member.id, memberStat);
+			if (Object.keys(memberStat).length) {
+				promises.push(this.saveStats(member.id, memberStat));
+			}
+
+			if (rolesForRemove.length) {
+				promises.push(member.roles.remove(rolesForRemove));
 			}
 		}
 
-		await Promise.all(promises);
+		const promisesParts = this._splitArray(promises, 40);
+		for (let part of promisesParts) {
+			await Promise.all(part);
+			await new Promise((resolve) => setTimeout(resolve, 1000));
+		}
 	}
 
-	static async saveStats(memberId, roles) {
+	_splitArray(arr = [], limit) {
+		const result = [];
+		let currentPart = [];
+
+		for (let i = 0; i < arr.length; i++) {
+			const item = arr[i];
+			currentPart.push(item);
+			if ((i + 1) % limit === 0) {
+				result.push(currentPart);
+				currentPart = [];
+			}
+		}
+
+		if (currentPart.length) {
+			result.push(currentPart);
+		}
+
+		return result;
+	}
+
+	async saveStats(memberId, roles) {
 		const existed = await Models.AdStats.findOne({ memberId });
 		if (existed) {
 			await Models.AdStats.updateOne({ memberId }, { roles });
@@ -101,30 +153,33 @@ class Ad {
 		}
 	}
 
-	static addStatRole(stat, role) {
-		const index = adConfig.roles.findIndex(({ name }) => role.name === name);
+	addStatRole(stat, role) {
+		const index = adConfig.roles.findIndex(({ id }) => role.id === id);
 		stat[index] = (stat[index] || 0) + 1;
 	}
 
-	static async clearStats() {
+	async clearStats() {
 		await Models.AdStats.deleteMany({});
 	}
 
-	static async getStatistics(members) {
+	async getStatistics(members) {
 		const stat = {};
-		const rawStat = await Models.AdStats.find({}).lean();
+		const dbStat = await Models.AdStats.find({}).lean();
 
-		for (let item of rawStat) {
+		for (let item of dbStat) {
 			const member = members.find(({ id }) => id === item.memberId);
-			if (!member) continue;
+			if (!member) {
+				continue;
+			}
+
 			const roles = item.roles || {};
-			const nums = [];
+			const counts = [];
 			for (let i = 0; i < adConfig.roles.length; i++) {
-				nums.push(roles[i] || roles["" + i] || 0);
+				counts.push(roles[i] || roles["" + i] || 0);
 			}
 
 			const userKey = (member.user.globalName || member.user.username || "").toLowerCase();
-			stat[userKey] = `<@${member.user.id}> ` + nums.join("/");
+			stat[userKey] = `<@${member.user.id}> ` + counts.join("/");
 		}
 
 		const keys = Object.keys(stat);
@@ -136,4 +191,4 @@ class Ad {
 	}
 }
 
-module.exports = Ad;
+module.exports = new Ad();

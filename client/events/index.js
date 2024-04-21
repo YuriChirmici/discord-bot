@@ -66,6 +66,7 @@ const registerEvents = (client) => {
 	client.on(Events.MessageCreate, async (message) => {
 		try {
 			const msg = message.content.trim();
+			// check if is custom command with "!"
 			if (!message.member.permissions.has(PermissionFlagsBits[commandsPermission]) || msg[0] !== "!") {
 				return;
 			}
@@ -73,7 +74,9 @@ const registerEvents = (client) => {
 			const argsArr = msg.split(" ");
 			const commandName = argsArr.shift().substring(1);
 			const command = findCommand(client.commands, commandName);
-			if (!command) return;
+			if (!command) {
+				return;
+			}
 
 			message.customArgs = parseCustomArgs(argsArr.join(" "));
 

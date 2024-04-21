@@ -5,7 +5,7 @@ const {
 	ActionRowBuilder,
 	ButtonStyle
 } = require("discord.js");
-const AdService = require("../../services/ad");
+const adService = require("../../services/ad");
 const { commandsPermission } = require("../../config.json");
 
 const NAME = getCommandName(__filename);
@@ -37,7 +37,7 @@ module.exports = {
 	async buttonClick(interaction) {
 		const subcommand = interaction.customId.split("_")[1];
 		if (subcommand === "confirm") {
-			await AdService.clearStats();
+			await adService.clearStats();
 			await interaction.reply({
 				content: "Статистика очищена!",
 				ephemeral: true
