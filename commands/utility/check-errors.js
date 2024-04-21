@@ -17,7 +17,11 @@ module.exports = {
 
 	async execute(interaction) {
 		const count = interaction.options.getString("count") || 1;
-		const content = (getLastErrors(count) || "Пусто").substr(0, 1999);
-		await interaction.reply({ content, ephemeral: true });
+		const content = (getLastErrors(count) || "Пусто");
+		if (content.length > 1990) {
+			await sendLongMessage(content, (text) => interaction.channel.send(text));
+		} else {
+			await interaction.reply({ content, ephemeral: true });
+		}
 	},
 };
