@@ -1,3 +1,4 @@
+const https = require("https");
 const { Events, PermissionFlagsBits } = require("discord.js");
 const { commandsPermission } = require("../../config.json");
 const { registerEvents: registerVoiceEvents } = require("./voice");
@@ -46,6 +47,27 @@ const getMissingArgs = (commandArgs = {}, messageArgs = {}) => {
 
 	return missingArgs;
 };
+
+const getFileConfigArgs = (attachments) => new Promise((resolve, reject) => {
+	const attachment = attachments[0];
+	if (!attachment) {
+		return;
+	}
+	const nameParts = attachment.name.split(".");
+	if (nameParts[nameParts.length - 1] !== "json") {
+		// support only json config
+		return;
+	}
+
+	https.get(attachment.url, (res) => {
+		let result = "";
+		res.on("data", chunk => result += chunk);
+		res.on("end", () => {
+			const config = JSON.parse(result);
+			resolve(config);
+		});
+	}).on("error", (err) => reject(err));
+});
 
 const chatInputCommand = async ({ interaction, client }) => {
 	const command = findCommand(interaction.client.commands, interaction.commandName);
@@ -100,7 +122,13 @@ const registerEvents = (client) => {
 				return;
 			}
 
-			const messageArgs = parseCustomArgs(argsArr.join(" "), command.customArgs);
+			let messageArgs;
+			if (message.attachments.size) {
+				messageArgs = await getFileConfigArgs(Array.from(message.attachments.values()));
+			} else {
+				messageArgs = parseCustomArgs(argsArr.join(" "), command.customArgs);
+			}
+
 			const missingArgs = getMissingArgs(command.customArgs, messageArgs);
 			if (missingArgs.length) {
 				await message.reply("Отсутвтуют обязательные параметры: " + missingArgs.join(", "));
