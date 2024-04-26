@@ -40,7 +40,7 @@
 				"next": "question2",
 				"skipAnswer": true,
 				"withTextAnswer": true,
-				"textAnswerKey": "nickname",
+				"textAnswerKey": "nickname / name / regiment",
 				"resultText": "Полк:",
 				"buttons": [
 					{

@@ -192,7 +192,7 @@ class AuthFlowService {
 			Models.AuthFlow.updateOne({ memberId: dbRecord.memberId }, { completed: true, currentQuestionId: null })
 		];
 
-		const nickname = (textAnswers.nickname || "").trim().substring(0, 31);
+		const nickname = this._buildNicknameFromAnswers(textAnswers, member.user.globalName);
 		if (authFlowConfig.resultChannelId) {
 			promises.push(this.sendResult(dbRecord, client, member, { nickname }));
 		}
@@ -279,6 +279,16 @@ class AuthFlowService {
 			.setDescription(result);
 
 		await channel.send({ embeds: [ embed ] });
+	}
+
+	_buildNicknameFromAnswers({ nickname, name, regiment }, globalName) {
+		nickname ||= globalName || "";
+		let result = `${regiment || ""} ${nickname}`.trim();
+		if (name) {
+			result += ` (${name})`;
+		}
+
+		return result.substring(0, 32);
 	}
 }
 
