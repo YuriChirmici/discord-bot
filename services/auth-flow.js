@@ -51,6 +51,10 @@ class AuthFlowService {
 			parent: authFlowConfig.categoryId,
 		});
 
+		await channel.permissionOverwrites.create(member.user.id, {
+			ViewChannel: true,
+		});
+
 		return channel;
 	}
 

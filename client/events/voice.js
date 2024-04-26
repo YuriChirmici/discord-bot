@@ -1,4 +1,4 @@
-const { Events, ChannelType, PermissionFlagsBits } = require("discord.js");
+const { Events, ChannelType } = require("discord.js");
 const { voiceConnections } = require("../../config.json");
 
 const joinChannel = async ({ client, state }) => {
@@ -17,17 +17,13 @@ const joinChannel = async ({ client, state }) => {
 
 	await state.member.voice.setChannel(channel);
 
-	if (!state.member.permissions.has(PermissionFlagsBits.ManageChannels) ||
-		!state.member.permissions.has(PermissionFlagsBits.ManageRoles)
-	) {
-		try {
-			await channel.permissionOverwrites.create(state.member.user.id, {
-				ManageChannels: true,
-				ManageRoles: true,
-			});
-		} catch (err) {
-			logError(err);
-		}
+	try {
+		await channel.permissionOverwrites.create(state.member.user.id, {
+			ManageChannels: true,
+			ManageRoles: true,
+		});
+	} catch (err) {
+		logError(err);
 	}
 };
 
