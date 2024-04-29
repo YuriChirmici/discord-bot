@@ -174,7 +174,8 @@ class AuthFlowService {
 	}
 
 	async submit({ dbRecord, member, channel, client }) {
-		const allRoles = [];
+		const rolesAdd = [];
+		const rolesRemove = [];
 		const textAnswers = {};
 
 		dbRecord.answers.forEach(({ questionId, buttonIndex, textAnswer }) => {
@@ -182,13 +183,16 @@ class AuthFlowService {
 			const question = this._getQuestionById(questionId);
 			if (buttonIndex || buttonIndex === 0) {
 				const button = question.buttons[buttonIndex];
-				allRoles.push(...(button.roles || []));
+				rolesAdd.push(...(button.rolesAdd || []));
+				rolesRemove.push(...(button.rolesRemove || []));
 			}
 		});
 
+		await member.roles.add(rolesAdd);
+		await member.roles.remove(rolesRemove);
+
 		const promises = [
 			channel.delete(),
-			member.roles.add(allRoles),
 			Models.AuthFlow.updateOne({ memberId: dbRecord.memberId }, { completed: true, currentQuestionId: null })
 		];
 
