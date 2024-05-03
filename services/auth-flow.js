@@ -269,7 +269,7 @@ class AuthFlowService {
 			result += `Q: ${question.resultText || question.text || ""}:\nA: `;
 			if (buttonIndex || buttonIndex === 0) {
 				const button = question.buttons[buttonIndex];
-				result += `${button.emoji || ""} ${button.answerText || button.text || ""}`.trim();
+				result += `${button.emoji || ""} ${button.resultText || button.text || ""}`.trim();
 			} else if (textAnswer?.text) {
 				result += textAnswer.text;
 			}

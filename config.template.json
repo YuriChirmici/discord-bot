@@ -46,7 +46,7 @@
 					{
 						"next": "question2",
 						"text": "btn1",
-						"answerText": "User answer",
+						"resultText": "User answer",
 						"url": "https://....",
 						"style": 2,
 						"emoji": "",
