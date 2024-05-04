@@ -3,7 +3,6 @@ const { start: schedulerStart } = require("./services/scheduler");
 const { login, client } = require("./client");
 const { connect: dbConnect } = require("./database");
 const { updateApp } = require("./shell-commands");
-const { version } = require("./config");
 
 const update = async () => {
 	try {
@@ -15,10 +14,6 @@ const update = async () => {
 
 (async () => {
 	try {
-		if (!version) {
-			return;
-		}
-
 		await update();
 		await login();
 		await dbConnect();
