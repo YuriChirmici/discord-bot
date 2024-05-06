@@ -14,8 +14,11 @@ const registerEvents = (client) => {
 	client.on(Events.InteractionCreate, async (interaction) => {
 		try {
 			const args = { interaction, client };
+			const customId = interaction.customId || "";
+			interaction.customData = getDataFromCustomId(customId);
+
 			if (interaction.isButton()) {
-				const commandName = (interaction.customId || "").split("_")[0];
+				const commandName = customId.split("_")[0];
 				if (commandName === authFlowService.NAME) {
 					await authFlowService.buttonClick(args);
 				}

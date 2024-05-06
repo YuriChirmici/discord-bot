@@ -11,7 +11,8 @@
 		"logError": true,
 		"getLastErrors": true,
 		"sendLongMessage": true,
-		"getCommandName": true
+		"getCommandName": true,
+		"getDataFromCustomId": true
 	},
 	"rules": {
 		"arrow-spacing": ["warn", { "before": true, "after": true }],

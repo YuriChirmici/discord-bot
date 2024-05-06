@@ -102,6 +102,7 @@ class AuthFlowService {
 	}
 
 	_createButton({ text, emoji, style, url, index, questionId, disabled }) {
+		const data = { questionId, index };
 		let button = new ButtonBuilder()
 			.setStyle(style || ButtonStyle.Secondary);
 
@@ -116,7 +117,7 @@ class AuthFlowService {
 		if (url) {
 			button = button.setURL(url);
 		} else {
-			const customId = `${this.NAME}_button_${questionId}_${index}`;
+			const customId = `${this.NAME}_${JSON.stringify(data)}`;
 			button = button.setCustomId(customId);
 		}
 
@@ -130,10 +131,8 @@ class AuthFlowService {
 	async buttonClick({ interaction, client }) {
 		const channel = interaction.channel;
 		const memberId = interaction.member.id;
-		const customId = interaction.customId;
-		const parts = customId.split("_");
-		const questionId = parts[2];
-		const buttonIndex = +parts[3];
+		const { questionId } = interaction.customData;
+		const buttonIndex = +interaction.customData.index;
 
 		const question = this._getQuestionById(questionId);
 		const btn = question?.buttons?.[buttonIndex];
