@@ -78,6 +78,13 @@ const chatInputCommand = async ({ interaction, client }) => {
 	await command.execute(interaction, client);
 };
 
+const getDataFromCustomId = (customId) => {
+	const dataString = customId.substring(customId.indexOf("_") + 1);
+	try {
+		return JSON.parse(dataString);
+	} catch (err) {}
+};
+
 const buttonInteraction = async ({ interaction }) => {
 	const customId = interaction.customId;
 	interaction.commandName = customId.split("_")[0];
@@ -85,6 +92,8 @@ const buttonInteraction = async ({ interaction }) => {
 	if (!command) {
 		return;
 	}
+
+	interaction.customData = getDataFromCustomId(customId);
 
 	await command.buttonClick(interaction);
 };

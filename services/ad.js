@@ -1,4 +1,4 @@
-const { ad: adConfig } = require("../config.json");
+const { adsConfig } = require("../config.json");
 const { Models } = require("../database");
 
 class Ad {
@@ -6,23 +6,23 @@ class Ad {
 		this.deletionTaskName = "ad";
 	}
 
-	async changeRole(role, member) {
+	async changeRoleButton({ member, adConfig, buttonIndex }) {
 		let roleCleared = false;
 		const rolesForAdd = [];
 		const rolesForRemove = [];
 
-		for (let { id } of adConfig.roles) {
-			const userRole = member.roles.cache.find(r => r.id === id);
-			if (role.id === id) {
-				if (!userRole) {
-					rolesForAdd.push(id);
-					continue;
-				} else {
-					rolesForRemove.push(id);
+		for (let i = 0; i < adConfig.buttons.length; i++) {
+			const rolesAdd = adConfig.buttons[i].rolesAdd;
+			const hasRoles = !!member.roles.cache.find(r => rolesAdd.includes(r.id));
+			if (buttonIndex === i) {
+				if (hasRoles) {
+					rolesForRemove.push(...rolesAdd);
 					roleCleared = true;
+				} else {
+					rolesForAdd.push(...rolesAdd);
 				}
-			} else if (userRole) {
-				rolesForRemove.push(id);
+			} else if (!adConfig.multipleRoles && hasRoles) {
+				rolesForRemove.push(...rolesAdd);
 			}
 		}
 
@@ -37,6 +37,7 @@ class Ad {
 		return roleCleared;
 	}
 
+	// for attendance ad
 	async addDelayedDeletion(taskData, date) {
 		await Models.Scheduler.create({
 			name: this.deletionTaskName,
@@ -45,6 +46,7 @@ class Ad {
 		});
 	}
 
+	// for attendance ad
 	async runAdDeletionTasks(client) {
 		const tasks = await Models.Scheduler.find({ name: this.deletionTaskName });
 		const promises = tasks.map((task) => this.closeAd(task.data, client));
@@ -55,12 +57,13 @@ class Ad {
 		]);
 	}
 
-	getMemberAdRoles(member) {
+	getMemberAdRoles(member, adName) {
 		const roles = [];
-		for (let configRole of adConfig.roles) {
-			const foundRole = member.roles.cache.find((role) => role.id === configRole.id);
+		const adConfig = this.getAdConfigByName(adName);
+		for (let button of adConfig.buttons) {
+			const foundRole = member.roles.cache.find((role) => button.rolesAdd.includes(role.id));
 			if (foundRole) {
-				roles.push(configRole);
+				roles.push(...(button.rolesAdd.map((id) => ({ id, save: button.save }))));
 			}
 		}
 
@@ -72,6 +75,7 @@ class Ad {
 		return Array.from(members.values());
 	}
 
+	// for attendance ad
 	async closeAd({ guildId, messageId, channelId }, client) {
 		const guild = await client.guilds.fetch(guildId);
 		await this.deleteAdRoles(guild);
@@ -89,6 +93,7 @@ class Ad {
 		}
 	}
 
+	// for attendance ad
 	async deleteAdRoles(guild) {
 		const [ members, dbStats ] = await Promise.all([
 			this.getGuildMembers(guild),
@@ -98,7 +103,7 @@ class Ad {
 		const promises = [];
 
 		for (let member of members) {
-			const memberAdRoles = this.getMemberAdRoles(member);
+			const memberAdRoles = this.getMemberAdRoles(member, "attendance");
 			const memberStat = dbStats.find(({ memberId }) => memberId === member.id)?.roles || {};
 			const rolesForRemove = [];
 
@@ -146,6 +151,7 @@ class Ad {
 		return result;
 	}
 
+	// for attendance ad
 	async saveStats(memberId, roles) {
 		const existed = await Models.AdStats.findOne({ memberId });
 		if (existed) {
@@ -155,15 +161,19 @@ class Ad {
 		}
 	}
 
+	// for attendance ad
 	addStatRole(stat, role) {
-		const index = adConfig.roles.findIndex(({ id }) => role.id === id);
+		const attendanceConfig = this.getAdConfigByName("attendance");
+		const index = attendanceConfig.buttons.findIndex(({ rolesAdd }) => rolesAdd.includes(role.id));
 		stat[index] = (stat[index] || 0) + 1;
 	}
 
+	// for attendance ad
 	async clearStats() {
 		await Models.AdStats.deleteMany({});
 	}
 
+	// for attendance ad
 	async getStatistics(members) {
 		const stat = {};
 		const dbStat = await Models.AdStats.find({}).lean();
@@ -176,7 +186,8 @@ class Ad {
 
 			const roles = item.roles || {};
 			const counts = [];
-			for (let i = 0; i < adConfig.roles.length; i++) {
+			const attendanceConfig = this.getAdConfigByName("attendance");
+			for (let i = 0; i < attendanceConfig.buttons.length; i++) {
 				counts.push(roles[i] || roles["" + i] || 0);
 			}
 
@@ -190,6 +201,10 @@ class Ad {
 		const resultArr = keys.map((key) => stat[key]);
 
 		return resultArr.join("\n");
+	}
+
+	getAdConfigByName(name) {
+		return adsConfig.ads.find((ad) => ad.name === name);
 	}
 }
 

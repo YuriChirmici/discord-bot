@@ -7,13 +7,14 @@ const {
 	ButtonStyle
 } = require("discord.js");
 const adService = require("../../services/ad");
-const { ad: adConfig, commandsPermission } = require("../../config.json");
+const { adsConfig, commandsPermission } = require("../../config.json");
 const { Models } = require("../../database");
 
 const NAME = getCommandName(__filename);
 
-const createButton = (id, emoji, style = ButtonStyle.Secondary) => {
-	const customId = `${NAME}_role${id}`;
+const createButton = ({ index, emoji, adName, style = ButtonStyle.Secondary }) => {
+	const idData = { adName, index };
+	const customId = `${NAME}_${JSON.stringify(idData)}`;
 	const button = new ButtonBuilder()
 		.setCustomId(customId)
 		.setStyle(style)
@@ -24,7 +25,7 @@ const createButton = (id, emoji, style = ButtonStyle.Secondary) => {
 
 const createAd = (title, text) => {
 	const ad = new EmbedBuilder()
-		.setColor(adConfig.color)
+		.setColor(adsConfig.borderColor)
 		.setTitle(title)
 		.setDescription(text);
 
@@ -33,10 +34,10 @@ const createAd = (title, text) => {
 
 const customArgs = {
 	title: { required: true },
-	timer: { required: true, type: "number" },
 	text: {},
 	content: { required: true },
 	channelId: {},
+	name: { required: true }
 };
 
 module.exports = {
@@ -52,15 +53,47 @@ module.exports = {
 
 	async execute(message, client) {
 		if (!message.customArgs) {
-			return await message.reply("Используй команду !" + NAME);
+			return await message.channel.send("Используй команду !" + NAME);
 		}
 
-		const { title = "", text = "", content = "", channelId } = message.customArgs;
-		const timer = Number.parseInt(message.customArgs.timer);
+		const adName = message.customArgs.name;
+		const adConfig = adService.getAdConfigByName(adName);
+		const creationFuncName = `createAd_${adConfig.type}`;
+		if (!this[creationFuncName]) {
+			return await message.channel.send("Неверные имя или тип объявления");
+		}
+
+		const { channelId } = message.customArgs;
+		const messageProps = this.createAdMessage(message, adConfig);
+		const targetChannel = (await this._prepareTargetChannel(client, channelId)) || message.channel;
+
+		await this[creationFuncName](message, client, { messageProps, targetChannel });
+	},
+
+	createAdMessage(message, adConfig) {
+		const { title = "", text = "", content = "" } = message.customArgs;
 		const ad = createAd(title, text);
-		const buttons = adConfig.roles.map((role, i) => createButton(i, role.emoji));
+		const buttons = adConfig.buttons.map((button, i) => createButton({
+			index: i,
+			emoji: button.emoji,
+			style: button.style,
+			adName: adConfig.name,
+		}));
 		const buttonsRow = new ActionRowBuilder()
 			.addComponents(...buttons);
+
+		return {
+			embeds: [ ad ],
+			components: [ buttonsRow ],
+			content
+		};
+	},
+
+	async createAd_attendance(message, client, { messageProps, targetChannel }) {
+		const timer = Number.parseInt(message.customArgs.timer);
+		if (!timer) {
+			return await message.channel.send("Отсутвтуют обязательные параметры: timer");
+		}
 
 		const task = await Models.Scheduler.findOne({ name: adService.deletionTaskName });
 		if (task) {
@@ -68,18 +101,18 @@ module.exports = {
 		}
 
 		await adService.runAdDeletionTasks(client);
-		const targetChannel = (await this._prepareTargetChannel(client, channelId)) || message.channel;
-		const adMessage = await targetChannel.send({
-			embeds: [ ad ],
-			components: [ buttonsRow ],
-			content
-		});
+
+		const adMessage = await targetChannel.send(messageProps);
 
 		await adService.addDelayedDeletion({
 			guildId: message.guildId,
 			messageId: adMessage.id,
 			channelId: adMessage.channel.id
 		}, Date.now() + timer * 60 * 1000);
+	},
+
+	async createAd_rolesUsual(message, client, { messageProps, targetChannel }) {
+		await targetChannel.send(messageProps);
 	},
 
 	async _prepareTargetChannel(client, channelId) {
@@ -97,18 +130,63 @@ module.exports = {
 	},
 
 	async buttonClick(interaction) {
-		const member = interaction.member;
-		const roleIndex = +interaction.customId[interaction.customId.length - 1];
-		const configRole = adConfig.roles[+roleIndex];
-		const role = member.guild.roles.cache.find(r => r.id == configRole.id);
+		if (!interaction.customData) {
+			return;
+		}
 
-		const roleCleared = await adService.changeRole(role, member);
-		const message = roleCleared ? `Роль '${role.name}' очищена` : `Роль изменена на '${role.name}'`;
+		const { adName } = interaction.customData;
+		const buttonIndex = +interaction.customData.index;
+
+		const adConfig = adService.getAdConfigByName(adName);
+		if (!adConfig) {
+			return logError("No defined config for " + adName);
+		}
+
+		const buttonConfig = adConfig.buttons[buttonIndex];
+		const member = interaction.member;
+
+		const rolesCleared = await adService.changeRoleButton({ member, adConfig, buttonIndex });
+
+		const guildRoles = await member.guild.roles.fetch();
+		const roles = Array.from(guildRoles.filter(({ id }) => buttonConfig.rolesAdd.includes(id)).values());
+		let message = this._prepareButtonReply(roles, adConfig, rolesCleared);
 
 		await interaction.reply({
 			content: message,
 			ephemeral: true
 		});
+
+		if (adConfig.resultChannelId) {
+			const channel = await interaction.guild.channels.fetch(adConfig.resultChannelId);
+			const resultMessage = `<@${member.user.id}>: ${message}`;
+			await await channel.send(resultMessage);
+		}
+	},
+
+	_prepareButtonReply(roles, adConfig, rolesCleared) {
+		const rolesString = roles.map(({ id }) => `<@&${id}>`).join(", ");
+		let message;
+		if (rolesCleared) {
+			if (roles.length > 1) {
+				message = `Роли "${rolesString}" очищены`;
+			} else {
+				message = `Роль "${rolesString}" очищена`;
+			}
+		} else if (adConfig.multipleRoles) {
+			if (roles.length > 1) {
+				message = `Роли "${rolesString}" добавлены`;
+			} else {
+				message = `Роль "${rolesString}" добавленa`;
+			}
+		} else {
+			if (roles.length > 1) {
+				message = `Роли изменены на "${rolesString}"`;
+			} else {
+				message = `Роль изменена на "${rolesString}"`;
+			}
+		}
+
+		return message;
 	},
 
 	async task(data, client) {

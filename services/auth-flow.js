@@ -5,7 +5,7 @@ const {
 	ButtonStyle,
 	EmbedBuilder
 } = require("discord.js");
-const { authFlow: authFlowConfig, ad: adConfig } = require("../config.json");
+const { authFlow: authFlowConfig, adsConfig } = require("../config.json");
 const { Models } = require("../database");
 
 class AuthFlowService {
@@ -278,7 +278,7 @@ class AuthFlowService {
 		});
 
 		const embed = new EmbedBuilder()
-			.setColor(adConfig.color)
+			.setColor(adsConfig.borderColor)
 			.setTitle(resultHeader || "Title")
 			.setDescription(result);
 

@@ -5,15 +5,53 @@
 	"database": {
 		"connectionLink": ""
 	},
-	"ad": {
-		"roles": [ 
-			{ "id": "", "emoji": "" },
-			{ "id": "", "emoji": "" },
-			{ "id": "", "emoji": "" },
-			{ "id": "", "emoji": "" },
-			{ "id": "", "emoji": "", "save": true }
+	"adsConfig": {
+		"ads": [
+			{
+				"type": "attendance",
+				"name": "attendance",
+				"buttons": [ 
+					{
+						"rolesAdd": [],
+						"emoji": ""
+					},
+					{
+						"rolesAdd": [],
+						"emoji": ""
+					},
+					{
+						"rolesAdd": [],
+						"emoji": ""
+					},
+					{
+						"rolesAdd": [],
+						"emoji": ""
+					},
+					{
+						"rolesAdd": [],
+						"emoji": "",
+						"save": true
+					}
+				]
+			},
+			{
+				"type": "rolesUsual",
+				"name": "vacation",
+				"multipleRoles": true,
+				"resultChannelId": "",
+				"buttons": [ 
+					{
+						"rolesAdd": [],
+						"emoji": ""
+					},
+					{
+						"rolesAdd": [],
+						"emoji": ""
+					}
+				]
+			}
 		],
-		"color": [ 128, 177, 235 ]
+		"borderColor": [ 128, 177, 235 ]
 	},
 	"commandsPermission": "ManageRoles",
 	"voiceConnections": [

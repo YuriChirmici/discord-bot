@@ -2,9 +2,10 @@ const { Events } = require("discord.js");
 const authFlowService = require("../../services/auth-flow");
 
 const registerEvents = (client) => {
+	// eslint-disable-next-line no-unused-vars
 	client.on(Events.GuildMemberAdd, async (member) => {
 		try {
-			await authFlowService.startFlow(member, client);
+			// await authFlowService.startFlow(member, client);
 		} catch (err) {
 			logError(err);
 		}

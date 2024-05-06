@@ -4,7 +4,7 @@ const {
 	EmbedBuilder
 } = require("discord.js");
 const adService = require("../../services/ad");
-const { ad: adConfig, commandsPermission } = require("../../config.json");
+const { adsConfig, commandsPermission } = require("../../config.json");
 
 const NAME = "ad-stat";
 
@@ -41,7 +41,7 @@ module.exports = {
 			content += row + "\n";
 			if (content.length > 1750 || i === rows.length - 1) {
 				const embed = new EmbedBuilder()
-					.setColor(adConfig.color)
+					.setColor(adsConfig.borderColor)
 					.setTitle("Часть " + part)
 					.setDescription(content);
 
