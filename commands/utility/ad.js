@@ -23,11 +23,11 @@ const createButton = ({ index, emoji, adName, style = ButtonStyle.Secondary }) =
 	return button;
 };
 
-const createAd = (title, text) => {
+const createAd = (title, content) => {
 	const ad = new EmbedBuilder()
 		.setColor(adsConfig.borderColor)
 		.setTitle(title)
-		.setDescription(text);
+		.setDescription(content);
 
 	return ad;
 };
@@ -72,7 +72,7 @@ module.exports = {
 
 	createAdMessage(message, adConfig) {
 		const { title = "", text = "", content = "" } = message.customArgs;
-		const ad = createAd(title, text);
+		const ad = createAd(title, content);
 		const buttons = adConfig.buttons.map((button, i) => createButton({
 			index: i,
 			emoji: button.emoji,
@@ -85,7 +85,7 @@ module.exports = {
 		return {
 			embeds: [ ad ],
 			components: [ buttonsRow ],
-			content
+			content: text
 		};
 	},
 
