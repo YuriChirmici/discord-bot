@@ -27,7 +27,7 @@ const parseCustomArgs = (message, commandArgs) => {
 		const parts = argStr.split("=");
 		const key = parts.shift().trim();
 		let value = parts.join("=").trim();
-		if (commandArgs[key].type === "number") {
+		if (commandArgs[key] && commandArgs[key].type === "number") {
 			value = Number.parseFloat(value);
 		}
 		result[key] = value;
