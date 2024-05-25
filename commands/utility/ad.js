@@ -1,27 +1,10 @@
-const {
-	SlashCommandBuilder,
-	PermissionFlagsBits,
-	ActionRowBuilder,
-	EmbedBuilder,
-	ButtonBuilder,
-	ButtonStyle
-} = require("discord.js");
+const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require("discord.js");
 const adService = require("../../services/ad");
 const { adsConfig, commandsPermission } = require("../../config.json");
 const { Models } = require("../../database");
+const { createButtons, getButtonsFlat } = require("../../services/helpers");
 
 const NAME = getCommandName(__filename);
-
-const createButton = ({ index, emoji, adName, style = ButtonStyle.Secondary }) => {
-	const idData = { adName, index };
-	const customId = `${NAME}_${JSON.stringify(idData)}`;
-	const button = new ButtonBuilder()
-		.setCustomId(customId)
-		.setStyle(style)
-		.setEmoji(emoji);
-
-	return button;
-};
 
 const createAd = (title, content) => {
 	const ad = new EmbedBuilder()
@@ -73,18 +56,12 @@ module.exports = {
 	createAdMessage(message, adConfig) {
 		const { title = "", text = "", content = "" } = message.customArgs;
 		const ad = createAd(title, content);
-		const buttons = adConfig.buttons.map((button, i) => createButton({
-			index: i,
-			emoji: button.emoji,
-			style: button.style,
-			adName: adConfig.name,
-		}));
-		const buttonsRow = new ActionRowBuilder()
-			.addComponents(...buttons);
+
+		const components = createButtons(adConfig.buttons, { prefix: NAME }, { adName: adConfig.name });
 
 		return {
 			embeds: [ ad ],
-			components: [ buttonsRow ],
+			components,
 			content: text
 		};
 	},
@@ -142,7 +119,7 @@ module.exports = {
 			return logError("No defined config for " + adName);
 		}
 
-		const buttonConfig = adConfig.buttons[buttonIndex];
+		const buttonConfig = getButtonsFlat(adConfig.buttons)[buttonIndex];
 		const member = interaction.member;
 
 		const rolesCleared = await adService.changeRoleButton({ member, adConfig, buttonIndex });

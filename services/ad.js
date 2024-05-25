@@ -1,5 +1,6 @@
 const { adsConfig } = require("../config.json");
 const { Models } = require("../database");
+const { getButtonsFlat } = require("./helpers");
 
 class Ad {
 	constructor() {
@@ -10,9 +11,10 @@ class Ad {
 		let roleCleared = false;
 		const rolesForAdd = [];
 		const rolesForRemove = [];
+		const configButtons = getButtonsFlat(adConfig.buttons);
 
-		for (let i = 0; i < adConfig.buttons.length; i++) {
-			const rolesAdd = adConfig.buttons[i].rolesAdd;
+		for (let i = 0; i < configButtons.length; i++) {
+			const rolesAdd = configButtons[i].rolesAdd;
 			const hasRoles = !!member.roles.cache.find(r => rolesAdd.includes(r.id));
 			if (buttonIndex === i) {
 				if (hasRoles) {
@@ -60,7 +62,8 @@ class Ad {
 	getMemberAdRoles(member, adName) {
 		const roles = [];
 		const adConfig = this.getAdConfigByName(adName);
-		for (let button of adConfig.buttons) {
+		const configButtons = getButtonsFlat(adConfig.buttons);
+		for (let button of configButtons) {
 			const foundRole = member.roles.cache.find((role) => button.rolesAdd.includes(role.id));
 			if (foundRole) {
 				roles.push(...(button.rolesAdd.map((id) => ({ id, save: button.save }))));
@@ -164,7 +167,7 @@ class Ad {
 	// for attendance ad
 	addStatRole(stat, role) {
 		const attendanceConfig = this.getAdConfigByName("attendance");
-		const index = attendanceConfig.buttons.findIndex(({ rolesAdd }) => rolesAdd.includes(role.id));
+		const index = getButtonsFlat(attendanceConfig.buttons).findIndex(({ rolesAdd }) => rolesAdd.includes(role.id));
 		stat[index] = (stat[index] || 0) + 1;
 	}
 
@@ -187,7 +190,8 @@ class Ad {
 			const roles = item.roles || {};
 			const counts = [];
 			const attendanceConfig = this.getAdConfigByName("attendance");
-			for (let i = 0; i < attendanceConfig.buttons.length; i++) {
+			const configButtons = getButtonsFlat(attendanceConfig.buttons);
+			for (let i = 0; i < configButtons.length; i++) {
 				counts.push(roles[i] || roles["" + i] || 0);
 			}
 

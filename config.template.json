@@ -10,28 +10,30 @@
 			{
 				"type": "attendance",
 				"name": "attendance",
-				"buttons": [ 
-					{
-						"rolesAdd": [],
-						"emoji": ""
-					},
-					{
-						"rolesAdd": [],
-						"emoji": ""
-					},
-					{
-						"rolesAdd": [],
-						"emoji": ""
-					},
-					{
-						"rolesAdd": [],
-						"emoji": ""
-					},
-					{
-						"rolesAdd": [],
-						"emoji": "",
-						"save": true
-					}
+				"buttons": [
+					[
+						{
+							"rolesAdd": [],
+							"emoji": ""
+						},
+						{
+							"rolesAdd": [],
+							"emoji": ""
+						},
+						{
+							"rolesAdd": [],
+							"emoji": ""
+						},
+						{
+							"rolesAdd": [],
+							"emoji": ""
+						},
+						{
+							"rolesAdd": [],
+							"emoji": "",
+							"save": true
+						}
+					]
 				]
 			},
 			{
@@ -39,15 +41,17 @@
 				"name": "vacation",
 				"multipleRoles": true,
 				"resultChannelId": "",
-				"buttons": [ 
-					{
-						"rolesAdd": [],
-						"emoji": ""
-					},
-					{
-						"rolesAdd": [],
-						"emoji": ""
-					}
+				"buttons": [
+					[
+						{
+							"rolesAdd": [],
+							"emoji": ""
+						},
+						{
+							"rolesAdd": [],
+							"emoji": ""
+						}
+					]
 				]
 			}
 		],
@@ -80,17 +84,19 @@
 				"textAnswerKey": "nickname / name / regiment",
 				"resultText": "Полк:",
 				"buttons": [
-					{
-						"next": "question2",
-						"text": "btn1",
-						"resultText": "User answer",
-						"url": "https://....",
-						"style": 2,
-						"emoji": "",
-						"rolesAdd": [ "1231004585594720438"	], 
-						"rolesRemove": [ "1231004585594720438" ], 
-						"isSubmit": true
-					}
+					[
+						{
+							"next": "question2",
+							"text": "btn1",
+							"resultText": "User answer",
+							"url": "https://....",
+							"style": 2,
+							"emoji": "",
+							"rolesAdd": [ "1231004585594720438"	], 
+							"rolesRemove": [ "1231004585594720438" ], 
+							"isSubmit": true
+						}
+					]
 				]
 			}
 		]

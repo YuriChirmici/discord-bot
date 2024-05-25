@@ -1,12 +1,7 @@
-const {
-	ChannelType,
-	ActionRowBuilder,
-	ButtonBuilder,
-	ButtonStyle,
-	EmbedBuilder
-} = require("discord.js");
+const { ChannelType, EmbedBuilder } = require("discord.js");
 const { authFlow: authFlowConfig, adsConfig } = require("../config.json");
 const { Models } = require("../database");
+const { createButtons, getButtonsFlat } = require("../services/helpers");
 
 class AuthFlowService {
 	constructor() {
@@ -87,45 +82,12 @@ class AuthFlowService {
 	}
 
 	_prepareMessage(question, { memberId }) {
-		const buttons = (question.buttons || []).map((data, index) =>
-			this._createButton({ ...data, index, questionId: question.id })
-		);
-		let components;
-		if (buttons.length) {
-			components = [ new ActionRowBuilder().addComponents(...buttons) ];
-		}
+		const components = createButtons(question.buttons, { prefix: this.NAME }, { questionId: question.id });
 
 		return {
 			components,
 			content: (question.text || "").replace("@User", `<@${memberId}>`),
 		};
-	}
-
-	_createButton({ text, emoji, style, url, index, questionId, disabled }) {
-		const data = { questionId, index };
-		let button = new ButtonBuilder()
-			.setStyle(style || ButtonStyle.Secondary);
-
-		if (emoji) {
-			button = button.setEmoji(emoji);
-		}
-
-		if (text) {
-			button = button.setLabel(text);
-		}
-
-		if (url) {
-			button = button.setURL(url);
-		} else {
-			const customId = `${this.NAME}_${JSON.stringify(data)}`;
-			button = button.setCustomId(customId);
-		}
-
-		if (disabled) {
-			button = button.setDisabled(true);
-		}
-
-		return button;
 	}
 
 	async buttonClick({ interaction, client }) {
@@ -135,7 +97,7 @@ class AuthFlowService {
 		const buttonIndex = +interaction.customData.index;
 
 		const question = this._getQuestionById(questionId);
-		const btn = question?.buttons?.[buttonIndex];
+		const btn = getButtonsFlat(question?.buttons)[buttonIndex];
 		if (!question || !btn) {
 			// unexpected
 			return;
@@ -181,7 +143,7 @@ class AuthFlowService {
 			textAnswers[textAnswer.key] = textAnswer.text;
 			const question = this._getQuestionById(questionId);
 			if (buttonIndex || buttonIndex === 0) {
-				const button = question.buttons[buttonIndex];
+				const button = getButtonsFlat(question.buttons)[buttonIndex];
 				rolesAdd.push(...(button.rolesAdd || []));
 				rolesRemove.push(...(button.rolesRemove || []));
 			}
@@ -267,7 +229,7 @@ class AuthFlowService {
 
 			result += `Q: ${question.resultText || question.text || ""}:\nA: `;
 			if (buttonIndex || buttonIndex === 0) {
-				const button = question.buttons[buttonIndex];
+				const button = getButtonsFlat(question.buttons)[buttonIndex];
 				result += `${button.emoji || ""} ${button.resultText || button.text || ""}`.trim();
 			} else if (textAnswer?.text) {
 				result += textAnswer.text;
