@@ -1,7 +1,7 @@
 const { ChannelType, EmbedBuilder } = require("discord.js");
 const { authFlow: authFlowConfig, adsConfig } = require("../config.json");
 const { Models } = require("../database");
-const { createButtons, getButtonsFlat } = require("../services/helpers");
+const { createButtons, createSelect, getButtonsFlat } = require("../services/helpers");
 
 class AuthFlowService {
 	constructor() {
@@ -63,14 +63,14 @@ class AuthFlowService {
 	}
 
 	async sendQuestion({ dbRecord, client, question, channel, interaction }) {
-		const message = this._prepareMessage(question, { memberId: dbRecord.memberId });
+		const newMessage = this._prepareMessage(question, { memberId: dbRecord.memberId });
 
 		if (interaction) {
 			await interaction.deferReply();
 			await interaction.deleteReply();
 		}
 
-		await channel.send(message);
+		await channel.send(newMessage);
 
 		if (question.next && question.skipAnswer) {
 			// for cases when we should send next question immediately after previous one
@@ -82,7 +82,15 @@ class AuthFlowService {
 	}
 
 	_prepareMessage(question, { memberId }) {
-		const components = createButtons(question.buttons, { prefix: this.NAME }, { questionId: question.id });
+		const components = [];
+		if (question.select) {
+			const customId = `${this.NAME}_${JSON.stringify({ questionId: question.id })}`;
+			components.push(createSelect(customId, question.select));
+		}
+
+		if (question.buttons?.length) {
+			components.push(...createButtons(question.buttons, { prefix: this.NAME }, { questionId: question.id }));
+		}
 
 		return {
 			components,
@@ -91,8 +99,6 @@ class AuthFlowService {
 	}
 
 	async buttonClick({ interaction, client }) {
-		const channel = interaction.channel;
-		const memberId = interaction.member.id;
 		const { questionId } = interaction.customData;
 		const buttonIndex = +interaction.customData.index;
 
@@ -103,28 +109,17 @@ class AuthFlowService {
 			return;
 		}
 
-		let dbRecord = await Models.AuthFlow.findOne({ memberId }).lean();
-		let answers = dbRecord.answers;
-
-		if (questionId !== dbRecord.currentQuestionId) {
-			// clicked button in prev questions
-			const answerIndex = dbRecord.answers.findIndex((a) => a.questionId === questionId);
-			if (answerIndex >= 0) {
-				answers = dbRecord.answers.slice(0, answerIndex);
-				await this.removeMessagesAfterDate(channel, interaction.message.createdTimestamp);
-			}
-		}
-
-		answers.push({ questionId: question.id, buttonIndex });
-
-		dbRecord = await Models.AuthFlow.findOneAndUpdate({ memberId }, { answers }, { new: true });
-
-		if (btn.next) {
-			const nextQuestion = this._getQuestionById(btn.next);
-			await this.sendQuestion({ dbRecord, client, question: nextQuestion, interaction, channel });
-		} else if (btn.isSubmit) {
-			await this.submit({ dbRecord, member: interaction.member, channel, client });
-		}
+		await this.onAnswer({
+			client,
+			interaction,
+			channel: interaction.channel,
+			member: interaction.member,
+			message: interaction.message,
+			question,
+			nextQuestionId: btn.next,
+			isSubmit: btn.isSubmit,
+			answerData: { buttonIndex }
+		});
 	}
 
 	async removeMessagesAfterDate(channel, date) {
@@ -135,29 +130,13 @@ class AuthFlowService {
 	}
 
 	async submit({ dbRecord, member, channel, client }) {
-		const rolesAdd = [];
-		const rolesRemove = [];
-		const textAnswers = {};
-
-		dbRecord.answers.forEach(({ questionId, buttonIndex, textAnswer }) => {
-			textAnswers[textAnswer.key] = textAnswer.text;
-			const question = this._getQuestionById(questionId);
-			if (buttonIndex || buttonIndex === 0) {
-				const button = getButtonsFlat(question.buttons)[buttonIndex];
-				rolesAdd.push(...(button.rolesAdd || []));
-				rolesRemove.push(...(button.rolesRemove || []));
-			}
-		});
-
-		await member.roles.add(rolesAdd);
-		await member.roles.remove(rolesRemove);
-
 		const promises = [
+			this._changeResultRoles(dbRecord, member),
 			channel.delete(),
 			Models.AuthFlow.updateOne({ memberId: dbRecord.memberId }, { completed: true, currentQuestionId: null })
 		];
 
-		const nickname = this._buildNicknameFromAnswers(textAnswers, member.user.globalName);
+		const nickname = this._buildNicknameFromAnswers(dbRecord, member.user.globalName);
 		if (authFlowConfig.resultChannelId) {
 			promises.push(this.sendResult(dbRecord, client, member, { nickname }));
 		}
@@ -167,6 +146,69 @@ class AuthFlowService {
 		}
 
 		await Promise.all(promises);
+	}
+
+	async _changeResultRoles(dbRecord, member) {
+		const rolesAdd = [];
+		const rolesRemove = [];
+
+		dbRecord.answers.forEach(({ questionId, buttonIndex, selectValues }) => {
+			const question = this._getQuestionById(questionId);
+			if (buttonIndex || buttonIndex === 0) {
+				const button = getButtonsFlat(question.buttons)[buttonIndex];
+				rolesAdd.push(...(button.rolesAdd || []));
+				rolesRemove.push(...(button.rolesRemove || []));
+			} else if (selectValues?.length) {
+				const options = selectValues.map((value) => question.select.options.find((o) => o.value === value));
+				const optionsRolesAdd = options.map((o) => o.rolesAdd || []).flat();
+				const optionsRolesRemove = options.map((o) => o.rolesRemove || []).flat();
+				rolesAdd.push(...optionsRolesAdd);
+				rolesRemove.push(...optionsRolesRemove);
+			}
+		});
+
+		if (rolesAdd.length) {
+			await member.roles.add(rolesAdd);
+		}
+
+		if (rolesRemove.length) {
+			await member.roles.remove(rolesRemove);
+		}
+	}
+
+	async sendResult(dbRecord, client, member, { nickname }) {
+		const resultChannelId = authFlowConfig.resultChannelId;
+		const channel = await client.channels.fetch(resultChannelId);
+
+		const resultHeader = (authFlowConfig.resultHeader || "").replace("{{user}}", nickname || member.user.globalName);
+		let result = "";
+
+		dbRecord.answers.forEach(({ questionId, buttonIndex, textAnswer, selectValues }) => {
+			const question = this._getQuestionById(questionId);
+			if (question.hideInResult) {
+				return;
+			}
+
+			result += `Q: ${question.resultText || question.text || ""}:\nA: `;
+			if (buttonIndex || buttonIndex === 0) {
+				const button = getButtonsFlat(question.buttons)[buttonIndex];
+				result += `${button.emoji || ""} ${button.resultText || button.text || ""}`.trim();
+			} else if (textAnswer?.text) {
+				result += textAnswer.text;
+			} else if (selectValues) {
+				const optionsTexts = selectValues.map((value) => question.select.options.find((o) => o.value === value).text);
+				result += optionsTexts.join(", ");
+			}
+
+			result += "\n\n";
+		});
+
+		const embed = new EmbedBuilder()
+			.setColor(adsConfig.borderColor)
+			.setTitle(resultHeader || "Title")
+			.setDescription(result);
+
+		await channel.send({ embeds: [ embed ] });
 	}
 
 	_getStartQuestion() {
@@ -195,58 +237,35 @@ class AuthFlowService {
 		}
 
 		if (!question.textAnswerKey) {
+			// text answer is not expected for this question
 			return;
 		}
 
-		dbRecord = await Models.AuthFlow.findOneAndUpdate({ memberId }, { $push: { answers: {
-			questionId: question.id,
-			textAnswer: {
-				key: question.textAnswerKey,
-				text: messageText,
+		await this.onAnswer({
+			client,
+			channel,
+			member: message.member,
+			message,
+			question,
+			nextQuestionId: question.next,
+			isSubmit: question.isSubmit,
+			answerData: {
+				textAnswer: {
+					key: question.textAnswerKey,
+					text: messageText,
+				}
 			}
-		} } }, { new: true });
-
-		if (question.next) {
-			const nextQuestion = this._getQuestionById(question.next);
-			await this.sendQuestion({ dbRecord, client, question: nextQuestion, channel });
-		} else if (question.isSubmit) {
-			await this.submit({ dbRecord, member: message.member, channel: message.channel, client });
-		}
+		});
 	}
 
-	async sendResult(dbRecord, client, member, { nickname }) {
-		const resultChannelId = authFlowConfig.resultChannelId;
-		const channel = await client.channels.fetch(resultChannelId);
-
-		const resultHeader = (authFlowConfig.resultHeader || "").replace("{{user}}", nickname || member.user.globalName);
-		let result = "";
-
-		dbRecord.answers.forEach(({ questionId, buttonIndex, textAnswer }) => {
-			const question = this._getQuestionById(questionId);
-			if (question.hideInResult) {
-				return;
-			}
-
-			result += `Q: ${question.resultText || question.text || ""}:\nA: `;
-			if (buttonIndex || buttonIndex === 0) {
-				const button = getButtonsFlat(question.buttons)[buttonIndex];
-				result += `${button.emoji || ""} ${button.resultText || button.text || ""}`.trim();
-			} else if (textAnswer?.text) {
-				result += textAnswer.text;
-			}
-
-			result += "\n\n";
+	_buildNicknameFromAnswers(dbRecord, globalName) {
+		const textAnswers = {};
+		dbRecord.answers.forEach(({ textAnswer }) => {
+			textAnswers[textAnswer.key] = textAnswer.text;
 		});
 
-		const embed = new EmbedBuilder()
-			.setColor(adsConfig.borderColor)
-			.setTitle(resultHeader || "Title")
-			.setDescription(result);
+		let { nickname, name, regiment } = textAnswers;
 
-		await channel.send({ embeds: [ embed ] });
-	}
-
-	_buildNicknameFromAnswers({ nickname, name, regiment }, globalName) {
 		nickname ||= globalName || "";
 		let result = `${regiment || ""} ${nickname}`.trim();
 		if (name) {
@@ -254,6 +273,54 @@ class AuthFlowService {
 		}
 
 		return result.substring(0, 32);
+	}
+
+	async stringSelect({ interaction, client }) {
+		const { questionId } = interaction.customData;
+		const question = this._getQuestionById(questionId);
+
+		await this.onAnswer({
+			client,
+			interaction,
+			channel: interaction.channel,
+			member: interaction.member,
+			message: interaction.message,
+			question,
+			nextQuestionId: question.next,
+			isSubmit: question.isSubmit,
+			answerData: {
+				selectValues: interaction.values || []
+			}
+		});
+	}
+
+	async onAnswer({ client, interaction, channel, member, message, question, nextQuestionId, isSubmit, answerData = {} }) {
+		const questionId = question.id;
+		const memberId = member.id;
+
+		let dbRecord = await Models.AuthFlow.findOne({ memberId }).lean();
+		if (questionId !== dbRecord.currentQuestionId) {
+			const messageDate = message.createdTimestamp;
+			await this.processAnswerOnPrevQuestion({ messageDate, dbRecord, channel, questionId });
+		}
+
+		dbRecord.answers.push({ questionId, ...answerData });
+		dbRecord = await Models.AuthFlow.findOneAndUpdate({ memberId }, { answers: dbRecord.answers }, { new: true });
+
+		if (nextQuestionId) {
+			const nextQuestion = this._getQuestionById(nextQuestionId);
+			await this.sendQuestion({ dbRecord, client, question: nextQuestion, channel, interaction });
+		} else if (isSubmit) {
+			await this.submit({ dbRecord, member, channel, client });
+		}
+	}
+
+	async processAnswerOnPrevQuestion({ messageDate, dbRecord, channel, questionId }) {
+		const answerIndex = dbRecord.answers.findIndex((a) => a.questionId === questionId);
+		if (answerIndex !== -1) {
+			dbRecord.answers = dbRecord.answers.slice(0, answerIndex);
+			await this.removeMessagesAfterDate(channel, messageDate);
+		}
 	}
 }
 

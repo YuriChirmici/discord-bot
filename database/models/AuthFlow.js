@@ -6,7 +6,8 @@ const AnswerSchema = new mongoose.Schema({
 	textAnswer: {
 		key: String,
 		text: String,
-	}
+	},
+	selectValues: [ String ]
 }, { _id: false });
 
 const AuthFlowSchema = new mongoose.Schema({

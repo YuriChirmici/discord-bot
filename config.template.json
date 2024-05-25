@@ -82,22 +82,38 @@
 				"skipAnswer": true,
 				"withTextAnswer": true,
 				"textAnswerKey": "nickname / name / regiment",
-				"resultText": "Полк:",
+				"resultText": "Question text:",
 				"buttons": [
 					[
 						{
 							"next": "question2",
-							"text": "btn1",
-							"resultText": "User answer",
+							"text": "",
+							"resultText": "User answer:",
 							"url": "https://....",
 							"style": 2,
 							"emoji": "",
-							"rolesAdd": [ "1231004585594720438"	], 
-							"rolesRemove": [ "1231004585594720438" ], 
+							"rolesAdd": [ "" ], 
+							"rolesRemove": [ "" ], 
 							"isSubmit": true
 						}
 					]
-				]
+				],
+				"select": {
+					"placeholder": "",
+					"min": 1,
+					"max": 2,
+					"options": [
+						{
+							"isDefault": true,
+							"value": "",
+							"text": "",
+							"emoji": "",
+							"description": "",
+							"rolesAdd": [ "" ], 
+							"rolesRemove": [ "" ]
+						}
+					]
+				}
 			}
 		]
 	}

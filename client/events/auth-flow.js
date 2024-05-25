@@ -17,11 +17,15 @@ const registerEvents = (client) => {
 			const customId = interaction.customId || "";
 			interaction.customData = getDataFromCustomId(customId);
 
+			const commandName = customId.split("_")[0];
+			if (commandName !== authFlowService.NAME) {
+				return;
+			}
+
 			if (interaction.isButton()) {
-				const commandName = customId.split("_")[0];
-				if (commandName === authFlowService.NAME) {
-					await authFlowService.buttonClick(args);
-				}
+				await authFlowService.buttonClick(args);
+			} else if (interaction.isStringSelectMenu()) {
+				await authFlowService.stringSelect(args);
 			}
 		} catch (err) {
 			logError(err);

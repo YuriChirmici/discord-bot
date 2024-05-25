@@ -1,4 +1,10 @@
-const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
+const {
+	ActionRowBuilder,
+	ButtonBuilder,
+	ButtonStyle,
+	StringSelectMenuBuilder,
+	StringSelectMenuOptionBuilder
+} = require("discord.js");
 
 module.exports.createButtons = (buttonsConfig = [], { prefix }, customData = {}) => {
 	let index = 0;
@@ -42,6 +48,50 @@ const createButton = ({ customId, emoji, url, disabled, text, style }) => {
 	}
 
 	return button;
+};
+
+module.exports.createSelect = (customId, { placeholder, min, max, options }) => {
+	let select = new StringSelectMenuBuilder()
+		.setCustomId(customId);
+
+	if (placeholder) {
+		select = select.setPlaceholder(placeholder);
+	}
+
+	if (min) {
+		select = select.setMinValues(+min);
+	}
+
+	if (max) {
+		select = select.setMaxValues(Math.min(max, options.length));
+	}
+
+	const optionsComponents = [];
+	options.forEach(({ text, description, value, emoji, isDefault }) => {
+		let option = new StringSelectMenuOptionBuilder()
+			.setLabel(text)
+			.setValue(value);
+
+		if (description) {
+			option = option.setDescription(description);
+		}
+
+		if (emoji) {
+			option = option.setEmoji(emoji);
+		}
+
+		if (isDefault) {
+			option = option.setDefault(isDefault);
+		}
+
+		optionsComponents.push(option);
+	});
+
+	if (optionsComponents.length) {
+		select = select.addOptions(optionsComponents);
+	}
+
+	return new ActionRowBuilder().addComponents([ select ]);
 };
 
 module.exports.getButtonsFlat = (buttonsRows) => buttonsRows.flat();
