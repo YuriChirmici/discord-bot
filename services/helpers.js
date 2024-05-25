@@ -67,10 +67,10 @@ module.exports.createSelect = (customId, { placeholder, min, max, options }) => 
 	}
 
 	const optionsComponents = [];
-	options.forEach(({ text, description, value, emoji, isDefault }) => {
+	options.forEach(({ text, description, emoji, isDefault }) => {
 		let option = new StringSelectMenuOptionBuilder()
 			.setLabel(text)
-			.setValue(value);
+			.setValue(text);
 
 		if (description) {
 			option = option.setDescription(description);

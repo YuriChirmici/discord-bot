@@ -104,13 +104,14 @@
 					"max": 2,
 					"options": [
 						{
+							"next": "question2",
 							"isDefault": true,
-							"value": "",
 							"text": "",
 							"emoji": "",
 							"description": "",
 							"rolesAdd": [ "" ], 
-							"rolesRemove": [ "" ]
+							"rolesRemove": [ "" ],
+							"resultText": ""
 						}
 					]
 				}

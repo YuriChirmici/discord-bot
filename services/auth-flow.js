@@ -159,7 +159,7 @@ class AuthFlowService {
 				rolesAdd.push(...(button.rolesAdd || []));
 				rolesRemove.push(...(button.rolesRemove || []));
 			} else if (selectValues?.length) {
-				const options = selectValues.map((value) => question.select.options.find((o) => o.value === value));
+				const options = selectValues.map((value) => question.select.options.find((o) => o.text === value));
 				const optionsRolesAdd = options.map((o) => o.rolesAdd || []).flat();
 				const optionsRolesRemove = options.map((o) => o.rolesRemove || []).flat();
 				rolesAdd.push(...optionsRolesAdd);
@@ -195,8 +195,14 @@ class AuthFlowService {
 				result += `${button.emoji || ""} ${button.resultText || button.text || ""}`.trim();
 			} else if (textAnswer?.text) {
 				result += textAnswer.text;
-			} else if (selectValues) {
-				const optionsTexts = selectValues.map((value) => question.select.options.find((o) => o.value === value).text);
+			} else if (selectValues?.length) {
+				const optionsTexts = [];
+				question.select.options.forEach((option) => {
+					const userValue = selectValues.find((value) => value === option.text);
+					if (userValue) {
+						optionsTexts.push(option.resultText || option.text || "");
+					}
+				});
 				result += optionsTexts.join(", ");
 			}
 
@@ -279,6 +285,9 @@ class AuthFlowService {
 		const { questionId } = interaction.customData;
 		const question = this._getQuestionById(questionId);
 
+		const selectValues = interaction.values || [];
+		const option = question.select.options.find((o) => o.text === selectValues[0]);
+
 		await this.onAnswer({
 			client,
 			interaction,
@@ -286,11 +295,9 @@ class AuthFlowService {
 			member: interaction.member,
 			message: interaction.message,
 			question,
-			nextQuestionId: question.next,
+			nextQuestionId: option?.next || question.next,
 			isSubmit: question.isSubmit,
-			answerData: {
-				selectValues: interaction.values || []
-			}
+			answerData: { selectValues }
 		});
 	}
 
