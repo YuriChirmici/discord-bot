@@ -21,6 +21,7 @@ const joinChannel = async ({ client, state }) => {
 		await channel.permissionOverwrites.create(state.member.user.id, {
 			ManageChannels: true,
 			ManageRoles: true,
+			Connect: true
 		});
 	} catch (err) {
 		logError(err);
