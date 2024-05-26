@@ -187,16 +187,8 @@ class Ad {
 				continue;
 			}
 
-			const roles = item.roles || {};
-			const counts = [];
-			const attendanceConfig = this.getAdConfigByName("attendance");
-			const configButtons = getButtonsFlat(attendanceConfig.buttons);
-			for (let i = 0; i < configButtons.length; i++) {
-				counts.push(roles[i] || roles["" + i] || 0);
-			}
-
 			const userKey = (member.user.globalName || member.user.username || "").toLowerCase();
-			stat[userKey] = `<@${member.user.id}> ` + counts.join("/");
+			stat[userKey] = this._prepareRolesStats(item, member);
 		}
 
 		const keys = Object.keys(stat);
@@ -205,6 +197,25 @@ class Ad {
 		const resultArr = keys.map((key) => stat[key]);
 
 		return resultArr.join("\n");
+	}
+
+	// for attendance ad
+	async getMemberStatistic(member) {
+		const memberStat = await Models.AdStats.findOne({ memberId: member.id }).lean();
+		return this._prepareRolesStats(memberStat, member);
+	}
+
+	// for attendance ad
+	_prepareRolesStats(statItem, member) {
+		const roles = statItem.roles || {};
+		const counts = [];
+		const attendanceConfig = this.getAdConfigByName("attendance");
+		const configButtons = getButtonsFlat(attendanceConfig.buttons);
+		for (let i = 0; i < configButtons.length; i++) {
+			counts.push(roles[i] || roles["" + i] || 0);
+		}
+
+		return `<@${member.id}> ` + counts.join("/");
 	}
 
 	getAdConfigByName(name) {

@@ -14,9 +14,18 @@ module.exports = {
 		.setName(NAME)
 		.setDescription("Показывает статистику ролей, выданных через объявление")
 		.setDefaultMemberPermissions(PermissionFlagsBits[commandsPermission])
+		.addUserOption(option => option.setName("user").setDescription("Пользователь"))
 		.setDMPermission(false),
 
 	async execute(interaction, client) {
+		const targetMember = interaction.options.getUser("user");
+
+		if (targetMember) {
+			const stat = await adService.getMemberStatistic(targetMember);
+			await interaction.reply(stat);
+			return;
+		}
+
 		const guildId = interaction.member.guild.id;
 		const guild = await client.guilds.fetch(guildId);
 		const members = await adService.getGuildMembers(guild);
