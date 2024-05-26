@@ -5,6 +5,8 @@ const { getButtonsFlat } = require("./helpers");
 class Ad {
 	constructor() {
 		this.deletionTaskName = "ad";
+		this.inactiveStatIndex = 99;
+		this.attendanceConfigName = "attendance";
 	}
 
 	async changeRoleButton({ member, adConfig, buttonIndex }) {
@@ -106,16 +108,20 @@ class Ad {
 		const promises = [];
 
 		for (let member of members) {
-			const memberAdRoles = this.getMemberAdRoles(member, "attendance");
+			const memberAdRoles = this.getMemberAdRoles(member, this.attendanceConfigName);
 			const memberStat = dbStats.find(({ memberId }) => memberId === member.id)?.roles || {};
 			const rolesForRemove = [];
 
-			for (let role of memberAdRoles) {
-				if (!role.save) {
-					rolesForRemove.push(role.id);
-				}
+			if (memberAdRoles.length) {
+				for (let role of memberAdRoles) {
+					if (!role.save) {
+						rolesForRemove.push(role.id);
+					}
 
-				this.addStatRole(memberStat, role);
+					this.addStatRole(memberStat, role);
+				}
+			} else if (this._checkInactive(member)) {
+				memberStat[this.inactiveStatIndex] = (memberStat[this.inactiveStatIndex] || 0) + 1;
 			}
 
 			if (Object.keys(memberStat).length) {
@@ -132,6 +138,17 @@ class Ad {
 			await Promise.all(part);
 			await new Promise((resolve) => setTimeout(resolve, 1000));
 		}
+	}
+
+	_checkInactive(member) {
+		const { rolesSelectors, rolesExceptions } = this.getAdConfigByName(this.attendanceConfigName).statisticsData;
+		const foundSelector = member.roles.cache.find((role) => rolesSelectors.includes(role.id));
+		const foundException = member.roles.cache.find((role) => rolesExceptions.includes(role.id));
+		if (!foundSelector || foundException) {
+			return false;
+		}
+
+		return true;
 	}
 
 	_splitArray(arr = [], limit) {
@@ -166,7 +183,7 @@ class Ad {
 
 	// for attendance ad
 	addStatRole(stat, role) {
-		const attendanceConfig = this.getAdConfigByName("attendance");
+		const attendanceConfig = this.getAdConfigByName(this.attendanceConfigName);
 		const index = getButtonsFlat(attendanceConfig.buttons).findIndex(({ rolesAdd }) => rolesAdd.includes(role.id));
 		stat[index] = (stat[index] || 0) + 1;
 	}
@@ -207,15 +224,21 @@ class Ad {
 
 	// for attendance ad
 	_prepareRolesStats(statItem, member) {
-		const roles = statItem.roles || {};
 		const counts = [];
-		const attendanceConfig = this.getAdConfigByName("attendance");
+		const attendanceConfig = this.getAdConfigByName(this.attendanceConfigName);
 		const configButtons = getButtonsFlat(attendanceConfig.buttons);
 		for (let i = 0; i < configButtons.length; i++) {
-			counts.push(roles[i] || roles["" + i] || 0);
+			counts.push(this._getStatByIndex(statItem, i));
 		}
 
-		return `<@${member.id}> ` + counts.join("/");
+		const inactiveCount = this._getStatByIndex(statItem, this.inactiveStatIndex);
+
+		return `<@${member.id}> ${counts.join("/")} | ${inactiveCount}`;
+	}
+
+	_getStatByIndex(statItem, index) {
+		const roles = statItem.roles || {};
+		return roles[index] || roles["" + index] || 0;
 	}
 
 	getAdConfigByName(name) {

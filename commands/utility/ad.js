@@ -65,7 +65,7 @@ module.exports = {
 		const text = interaction.options.getString("text") || defaults.text || "";
 		let content = defaults.content || "";
 
-		if (adName === "attendance") {
+		if (adName === adService.attendanceConfigName) {
 			const date = interaction.options.getString("date") || this._getDefaultDate();
 			const time = interaction.options.getString("time") || defaults.time || "";
 			const rating = this._getRatingByDate(date);
@@ -94,7 +94,7 @@ module.exports = {
 	},
 
 	_getRatingByDate(date) {
-		const ratings = adService.getAdConfigByName("attendance").ratings || [];
+		const ratings = adService.getAdConfigByName(adService.attendanceConfigName).ratings || [];
 		const [ day, month ] = date.split(".").map((part) => +part);
 		const year = new Date().getFullYear();
 

@@ -19,6 +19,10 @@
 					"time": ""
 				},
 				"ratings": [ "" ],
+				"statisticsData": {
+					"rolesSelectors": [ "" ],
+					"rolesExceptions": [ "" ]
+				},
 				"buttons": [
 					[
 						{
