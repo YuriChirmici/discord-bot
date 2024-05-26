@@ -7,56 +7,112 @@ const { createButtons, getButtonsFlat } = require("../../services/helpers");
 const NAME = getCommandName(__filename);
 
 const createAd = (title, content) => {
-	const ad = new EmbedBuilder()
-		.setColor(adsConfig.borderColor)
-		.setTitle(title)
-		.setDescription(content);
+	let ad = new EmbedBuilder()
+		.setColor(adsConfig.borderColor);
+
+	if (content) {
+		ad = ad.setDescription(content);
+	}
+
+	if (title) {
+		ad = ad.setTitle(content);
+	}
 
 	return ad;
 };
 
-const customArgs = {
-	title: { required: true },
-	text: {},
-	content: { required: true },
-	channelId: {},
-	name: { required: true }
-};
-
 module.exports = {
 	name: NAME,
-	customArgs,
 	data: new SlashCommandBuilder()
 		.setName(NAME)
-		.setDescription(
-			`Используй !${NAME}. Создает объявление. Параметры: ${Object.keys(customArgs).join(", ")}`
-		)
+		.setDescription(`Создает объявление. Типы: ${adsConfig.ads.map(({ name }) => name).join(", ")}`)
+		.addStringOption(option => option.setName("name").setDescription("Название объявления").setRequired(true).addChoices(
+			...adsConfig.ads.map(({ name }) => ({ name, value: name }))
+		))
+		.addChannelOption(option => option.setName("channel").setDescription("Целевой канал"))
+		.addIntegerOption(option => option.setName("timer").setDescription("Таймер для удаления объявления (минуты)"))
+		.addStringOption(option => option.setName("title").setDescription("Заголовок эмбеда"))
+		.addStringOption(option => option.setName("text").setDescription("Текст эмбеда"))
+		.addStringOption(option => option.setName("date").setDescription("Дата"))
+		.addStringOption(option => option.setName("time").setDescription("Время"))
 		.setDefaultMemberPermissions(PermissionFlagsBits[commandsPermission])
 		.setDMPermission(false),
 
-	async execute(message, client) {
-		if (!message.customArgs) {
-			return await message.channel.send("Используй команду !" + NAME);
-		}
-
-		const adName = message.customArgs.name;
+	async execute(interaction, client) {
+		const adName = interaction.options.getString("name");
 		const adConfig = adService.getAdConfigByName(adName);
-		const creationFuncName = `createAd_${adConfig.type}`;
+		const creationFuncName = `createAd_${adConfig?.type}`;
 		if (!this[creationFuncName]) {
-			return await message.channel.send("Неверные имя или тип объявления");
+			return await interaction.reply("Неверные название или тип объявления");
 		}
 
-		const { channelId } = message.customArgs;
-		const messageProps = this.createAdMessage(message, adConfig);
-		const targetChannel = (await this._prepareTargetChannel(client, channelId)) || message.channel;
+		const { channelId, timer, title, text, content } = this.getCommandOptions(interaction);
 
-		await this[creationFuncName](message, client, { messageProps, targetChannel });
+		const messageProps = this.createAdMessage({ title, text, content }, adConfig);
+		const targetChannel = await this._prepareTargetChannel(client, channelId);
+
+		await this[creationFuncName](interaction, client, { messageProps, targetChannel, timer });
 	},
 
-	createAdMessage(message, adConfig) {
-		const { title = "", text = "", content = "" } = message.customArgs;
-		const ad = createAd(title, content);
+	getCommandOptions(interaction) {
+		const adName = interaction.options.getString("name");
+		const adConfig = adService.getAdConfigByName(adName);
+		const defaults = adConfig.defaults || {};
 
+		const channelId = interaction.options.getChannel("channel")?.id || defaults.channelId || interaction.channel.id;
+		const timer = interaction.options.getInteger("timer") || defaults.timer || 24 * 60;
+		const title = interaction.options.getString("title") || defaults.title || "";
+		const text = interaction.options.getString("text") || defaults.text || "";
+		let content = defaults.content || "";
+
+		if (adName === "attendance") {
+			const date = interaction.options.getString("date") || this._getDefaultDate();
+			const time = interaction.options.getString("time") || defaults.time || "";
+			const rating = this._getRatingByDate(date);
+			content = content
+				.replace("{{date}}", date)
+				.replace("{{time}}", time)
+				.replace("{{rating}}", rating);
+		}
+
+		return { adName, channelId, timer, title, text, content };
+	},
+
+	_getDefaultDate() {
+		const adminOffset = -180;
+		const date = new Date();
+		const offset = date.getTimezoneOffset();
+		date.setMinutes(date.getMinutes() + offset - adminOffset + 24 * 60);
+
+		let day = date.getDate();
+		day = day < 10 ? "0" + day : day;
+
+		let month = date.getMonth() + 1;
+		month = month < 10 ? "0" + month : month;
+
+		return `${day}.${month}`;
+	},
+
+	_getRatingByDate(date) {
+		const ratings = adService.getAdConfigByName("attendance").ratings || [];
+		const [ day, month ] = date.split(".").map((part) => +part);
+		const year = new Date().getFullYear();
+
+		const startMonth = month % 2 === 1 ? month : month - 1;
+		const step = 7;
+		const startDate = new Date(year, startMonth - 1, 1, 0, 0, 0, 0);
+		const currentDate = new Date(year, month - 1, day, 0, 0, 0, 0);
+
+		for (let i = 0; i < ratings.length; i++) {
+			startDate.setDate(startDate.getDate() + step);
+			if (startDate.getTime() > currentDate.getTime() || (i === ratings.length - 1)) {
+				return ratings[i];
+			}
+		}
+	},
+
+	createAdMessage({ title, text, content }, adConfig) {
+		const ad = createAd(title, content);
 		const components = createButtons(adConfig.buttons, { prefix: NAME }, { adName: adConfig.name });
 
 		return {
@@ -66,15 +122,13 @@ module.exports = {
 		};
 	},
 
-	async createAd_attendance(message, client, { messageProps, targetChannel }) {
-		const timer = Number.parseInt(message.customArgs.timer);
-		if (!timer) {
-			return await message.channel.send("Отсутвтуют обязательные параметры: timer");
-		}
-
+	async createAd_attendance(interaction, client, { messageProps, targetChannel, timer }) {
 		const task = await Models.Scheduler.findOne({ name: adService.deletionTaskName });
 		if (task) {
-			await message.channel.send("Объявление будет создано после очистки предыдущего.");
+			await interaction.reply("Объявление будет создано после очистки предыдущего.");
+		} else {
+			await interaction.deferReply();
+			await interaction.deleteReply();
 		}
 
 		await adService.runAdDeletionTasks(client);
@@ -82,13 +136,15 @@ module.exports = {
 		const adMessage = await targetChannel.send(messageProps);
 
 		await adService.addDelayedDeletion({
-			guildId: message.guildId,
+			guildId: interaction.guild.id,
 			messageId: adMessage.id,
 			channelId: adMessage.channel.id
 		}, Date.now() + timer * 60 * 1000);
 	},
 
-	async createAd_rolesUsual(message, client, { messageProps, targetChannel }) {
+	async createAd_rolesUsual(interaction, client, { messageProps, targetChannel }) {
+		await interaction.deferReply();
+		await interaction.deleteReply();
 		await targetChannel.send(messageProps);
 	},
 

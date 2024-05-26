@@ -36,18 +36,6 @@ const parseCustomArgs = (message, commandArgs) => {
 	return result;
 };
 
-// for custom commands
-const getMissingArgs = (commandArgs = {}, messageArgs = {}) => {
-	const missingArgs = [];
-	for (let key in commandArgs) {
-		if (commandArgs[key].required && !messageArgs[key]) {
-			missingArgs.push(key);
-		}
-	}
-
-	return missingArgs;
-};
-
 const getFileConfigArgs = (attachments) => new Promise((resolve, reject) => {
 	const attachment = attachments[0];
 	if (!attachment) {
@@ -129,12 +117,6 @@ const registerEvents = (client) => {
 				messageArgs = await getFileConfigArgs(Array.from(message.attachments.values()));
 			} else {
 				messageArgs = parseCustomArgs(argsArr.join(" "), command.customArgs);
-			}
-
-			const missingArgs = getMissingArgs(command.customArgs, messageArgs);
-			if (missingArgs.length) {
-				await message.reply("Отсутвтуют обязательные параметры: " + missingArgs.join(", "));
-				return;
 			}
 
 			message.customArgs = messageArgs;

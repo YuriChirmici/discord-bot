@@ -10,6 +10,15 @@
 			{
 				"type": "attendance",
 				"name": "attendance",
+				"defaults": {
+					"timer": 600,
+					"channelId": "",
+					"title": "",
+					"text": "",
+					"content": "",
+					"time": ""
+				},
+				"ratings": [ "" ],
 				"buttons": [
 					[
 						{
@@ -41,6 +50,12 @@
 				"name": "vacation",
 				"multipleRoles": true,
 				"resultChannelId": "",
+				"defaults": {
+					"channelId": "",
+					"title": "",
+					"text": "",
+					"content": ""
+				},
 				"buttons": [
 					[
 						{
