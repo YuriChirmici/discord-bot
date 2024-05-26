@@ -94,8 +94,12 @@ class AuthFlowService {
 
 		return {
 			components,
-			content: (question.text || "").replace("@User", `<@${memberId}>`),
+			content: this._prepareMessageText(question.text, { memberId })
 		};
+	}
+
+	_prepareMessageText(text = "", data = {}) {
+		return text.replace("@User", `<@${data.memberId}>`).replace("{{user}}", data.name || "");
 	}
 
 	async buttonClick({ interaction, client }) {
@@ -180,7 +184,7 @@ class AuthFlowService {
 		const resultChannelId = authFlowConfig.resultChannelId;
 		const channel = await client.channels.fetch(resultChannelId);
 
-		const resultHeader = (authFlowConfig.resultHeader || "").replace("{{user}}", nickname || member.user.globalName);
+		const resultHeader = this._prepareMessageText(authFlowConfig.resultHeader, { name: nickname || member.user.globalName });
 		let result = "";
 
 		dbRecord.answers.forEach(({ questionId, buttonIndex, textAnswer, selectValues }) => {
@@ -189,12 +193,12 @@ class AuthFlowService {
 				return;
 			}
 
-			result += `Q: ${question.resultText || question.text || ""}:\nA: `;
+			let questionDataText = `Q: ${question.resultText || question.text || ""}:\nA: `;
 			if (buttonIndex || buttonIndex === 0) {
 				const button = getButtonsFlat(question.buttons)[buttonIndex];
-				result += `${button.emoji || ""} ${button.resultText || button.text || ""}`.trim();
+				questionDataText += `${button.emoji || ""} ${button.resultText || button.text || ""}`.trim();
 			} else if (textAnswer?.text) {
-				result += textAnswer.text;
+				questionDataText += textAnswer.text;
 			} else if (selectValues?.length) {
 				const optionsTexts = [];
 				question.select.options.forEach((option) => {
@@ -203,10 +207,10 @@ class AuthFlowService {
 						optionsTexts.push(option.resultText || option.text || "");
 					}
 				});
-				result += optionsTexts.join(", ");
+				questionDataText += optionsTexts.join(", ");
 			}
 
-			result += "\n\n";
+			result += this._prepareMessageText(questionDataText, { memberId: member.id }) + "\n\n";
 		});
 
 		const embed = new EmbedBuilder()
