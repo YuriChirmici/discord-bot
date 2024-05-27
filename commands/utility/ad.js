@@ -15,7 +15,7 @@ const createAd = (title, content) => {
 	}
 
 	if (title) {
-		ad = ad.setTitle(content);
+		ad = ad.setTitle(title);
 	}
 
 	return ad;
