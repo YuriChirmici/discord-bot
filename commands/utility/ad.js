@@ -70,9 +70,9 @@ module.exports = {
 			const time = interaction.options.getString("time") || defaults.time || "";
 			const rating = this._getRatingByDate(date);
 			content = content
-				.replace("{{date}}", date)
-				.replace("{{time}}", time)
-				.replace("{{rating}}", rating);
+				.replaceAll("{{date}}", date)
+				.replaceAll("{{time}}", time)
+				.replaceAll("{{rating}}", rating);
 		}
 
 		return { adName, channelId, timer, title, text, content };
