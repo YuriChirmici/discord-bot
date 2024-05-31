@@ -244,6 +244,43 @@ class Ad {
 	getAdConfigByName(name) {
 		return adsConfig.ads.find((ad) => ad.name === name);
 	}
+
+	getDefaultDate() {
+		const adminOffset = -180;
+		const date = new Date();
+		const offset = date.getTimezoneOffset();
+		date.setMinutes(date.getMinutes() + offset - adminOffset + 24 * 60);
+
+		let day = date.getDate();
+		day = day < 10 ? "0" + day : day;
+
+		let month = date.getMonth() + 1;
+		month = month < 10 ? "0" + month : month;
+
+		return `${day}.${month}`;
+	}
+
+	getRatingByDate(date) {
+		const ratings = this.getAdConfigByName(this.attendanceConfigName).ratings || [];
+		if (!ratings.length) {
+			return;
+		}
+
+		const [ day, month ] = date.split(".").map((part) => +part);
+		const year = new Date().getFullYear();
+
+		const startMonth = month % 2 === 1 ? month : month - 1;
+		const step = 7;
+		const startDate = new Date(year, startMonth - 1, 1, 0, 0, 0, 0);
+		const currentDate = new Date(year, month - 1, day, 0, 0, 0, 0);
+
+		for (let i = 0; i < ratings.length; i++) {
+			startDate.setDate(startDate.getDate() + step);
+			if (startDate.getTime() > currentDate.getTime() || (i === ratings.length - 1)) {
+				return ratings[i];
+			}
+		}
+	}
 }
 
 module.exports = new Ad();
