@@ -5,6 +5,10 @@ const {
 	StringSelectMenuBuilder,
 	StringSelectMenuOptionBuilder
 } = require("discord.js");
+const https = require("https");
+const jsdom = require("jsdom");
+
+const { JSDOM } = jsdom;
 
 module.exports.createButtons = (buttonsConfig = [], { prefix }, customData = {}) => {
 	let index = 0;
@@ -95,3 +99,79 @@ module.exports.createSelect = (customId, { placeholder, min, max, options }) => 
 };
 
 module.exports.getButtonsFlat = (buttonsRows) => buttonsRows.flat();
+
+const downloadFile = module.exports.downloadFile = (url) => new Promise((resolve, reject) => {
+	https.get(url, (res) => {
+		let result = "";
+		res.on("data", (data) => {
+			result += data;
+		});
+
+		res.on("end", () => {
+			resolve(result);
+		});
+
+	}).on("error", (err) => {
+		reject(err);
+	});
+});
+
+module.exports.getDomByUrl = async (url) => {
+	const fileData = await downloadFile(url);
+	return new JSDOM(fileData);
+};
+
+// workaround, discord has bug when we add and remove roles at the same time
+module.exports.setRoles = (member, rolesAdd = [], rolesRemove = []) => {
+	let promises = [];
+
+	if (rolesRemove.length) {
+		if (rolesAdd.length) {
+			promises.push(Promise.resolve());
+		}
+
+		promises.push(member.roles.remove(rolesRemove)
+			.then(() => {
+				if (rolesAdd.length) {
+					return member.roles.add(rolesAdd);
+				}
+			})
+		);
+	} else {
+		promises.push(member.roles.add(rolesAdd));
+	}
+
+	return promises;
+};
+
+module.exports.ensureDiscordRequests = async (requests, limit = 40) => {
+	const promisesParts = _splitArray(requests, limit);
+	const results = [];
+	for (let part of promisesParts) {
+		const result = await Promise.all(part);
+		results.push(...result);
+		await new Promise((resolve) => setTimeout(resolve, 1000));
+	}
+
+	return results;
+};
+
+const _splitArray = (arr = [], limit) => {
+	const result = [];
+	let currentPart = [];
+
+	for (let i = 0; i < arr.length; i++) {
+		const item = arr[i];
+		currentPart.push(item);
+		if ((i + 1) % limit === 0) {
+			result.push(currentPart);
+			currentPart = [];
+		}
+	}
+
+	if (currentPart.length) {
+		result.push(currentPart);
+	}
+
+	return result;
+};

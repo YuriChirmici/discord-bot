@@ -4,8 +4,8 @@
   "description": "",
   "main": "server.js",
   "scripts": {
-    "dev": "nodemon server.js",
-    "start": "nodemon server.js --delay 10",
+    "dev": "nodemon server.js --ignore src/",
+    "start": "node server.js",
     "deploy-commands": "node deploy-commands",
     "eslint": "npx eslint ."
   },
@@ -13,6 +13,7 @@
   "license": "ISC",
   "dependencies": {
     "discord.js": "^14.14.1",
+    "jsdom": "^24.1.0",
     "mongoose": "^8.1.0"
   },
   "devDependencies": {

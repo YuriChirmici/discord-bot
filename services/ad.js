@@ -1,6 +1,13 @@
-const { adsConfig } = require("../config.json");
+const fs = require("fs");
+const path = require("path");
+const { adsConfig, clanName, ratingRoles: ratingRolesConfig } = require("../config.json");
 const { Models } = require("../database");
-const { getButtonsFlat } = require("./helpers");
+const { getButtonsFlat, getDomByUrl, setRoles, ensureDiscordRequests } = require("./helpers");
+const { AttachmentBuilder } = require("discord.js");
+
+const srcPath = path.join(__dirname, "../src");
+const nicknamesFilePath = path.join(srcPath, "nicknames.csv");
+const ratingStatFilePath = path.join(srcPath, "rating-update-result.json");
 
 class Ad {
 	constructor() {
@@ -133,11 +140,7 @@ class Ad {
 			}
 		}
 
-		const promisesParts = this._splitArray(promises, 40);
-		for (let part of promisesParts) {
-			await Promise.all(part);
-			await new Promise((resolve) => setTimeout(resolve, 1000));
-		}
+		await ensureDiscordRequests(promises);
 	}
 
 	_checkInactive(member) {
@@ -149,26 +152,6 @@ class Ad {
 		}
 
 		return true;
-	}
-
-	_splitArray(arr = [], limit) {
-		const result = [];
-		let currentPart = [];
-
-		for (let i = 0; i < arr.length; i++) {
-			const item = arr[i];
-			currentPart.push(item);
-			if ((i + 1) % limit === 0) {
-				result.push(currentPart);
-				currentPart = [];
-			}
-		}
-
-		if (currentPart.length) {
-			result.push(currentPart);
-		}
-
-		return result;
 	}
 
 	// for attendance ad
@@ -281,6 +264,180 @@ class Ad {
 			}
 		}
 	}
+
+	async getPlayersStats() {
+		const statDom = await getDomByUrl("https://warthunder.com/en/community/claninfo/" + encodeURIComponent(clanName));
+		const table = statDom.window.document.querySelector(".squadrons-members__table");
+		if (!table) {
+			return;
+		}
+
+		const items = table.querySelectorAll(".squadrons-members__grid-item");
+
+		let data = [];
+		for (let i = 1; i < items.length / 6; i++) {
+			const rowIndex = i * 6;
+			const dataIndex = {
+				rating: 2,
+				activity: 3,
+				role: 4,
+				entryDate: 5,
+			};
+
+			Object.keys(dataIndex).forEach((key) => dataIndex[key] = items[rowIndex + dataIndex[key]].textContent.trim());
+			data.push({
+				...dataIndex,
+				nickname: items[rowIndex + 1].textContent.trim().split("@")[0],
+			});
+		}
+
+		return data;
+	}
+
+	async getMembersNicknames() {
+		if (!fs.existsSync(nicknamesFilePath)) {
+			return;
+		}
+
+		const nicknamesCSV = await fs.promises.readFile(nicknamesFilePath, "utf-8");
+		if (!nicknamesCSV) {
+			return;
+		}
+
+		const rows = nicknamesCSV.split("\n");
+		const nicknamesData = [];
+
+		for (let i = 1; i < rows.length; i++) {
+			const parts = rows[i].split(",");
+			const isMainReg = parts[7].trim() === "A";
+			if (!isMainReg) {
+				continue;
+			}
+
+			const name = parts[1].trim();
+			const nicks = parts[2].split(" | ").map(n => n.trim()).filter(n => n);
+			if (!name || !nicks.length) {
+				continue;
+			}
+
+			nicknamesData.push({
+				name: name[0] === "@" ? name.substring(1) : name,
+				nicks
+			});
+		}
+
+		return nicknamesData;
+	}
+
+	async processRatingRolesUpdate(interaction) {
+		const fileResult = await this.updateRatingRoles(interaction);
+		const channel = await interaction.guild.channels.fetch(ratingRolesConfig.resultChannelId);
+		await channel.send({
+			content: "Результат обновления рейтинговых ролей:",
+			files: [ fileResult ]
+		});
+
+		await adService.deleteRatingUpdateStatFile();
+	}
+
+	async updateRatingRoles(interaction) {
+		const [ stats, nicknames, members ] = await Promise.all([
+			this.getPlayersStats(),
+			this.getMembersNicknames(),
+			this.getGuildMembers(interaction.guild)
+		]);
+
+		if (!stats || !nicknames) {
+			return await this._prepareStatFile({ updated: false, statSiteError: !stats, fileError: !nicknames });
+		}
+
+		const { missingInDiscord, missingInFile, membersStats } = this.prepareMemberStats(stats, nicknames, members);
+		await this._updateRatingRoles(membersStats);
+
+		const fileResult = await this._prepareStatFile({ updated: true, missingInFile, missingInDiscord });
+
+		return fileResult;
+	}
+
+	prepareMemberStats(stats, nicknames, members) {
+		const missingInDiscord = [];
+		const missingInFile = [];
+		const membersStats = {};
+
+		stats.forEach((stat) => {
+			const nicknameItem = nicknames.find(({ nicks }) => nicks.find((nick) => stat.nickname === nick));
+			if (nicknameItem) {
+				const foundMember = members.find((member) => member.user.username === nicknameItem.name);
+				if (foundMember) {
+					membersStats[nicknameItem.name] ||= {
+						member: foundMember,
+						stats: []
+					};
+
+					membersStats[nicknameItem.name].stats.push(stat);
+				} else {
+					missingInDiscord.push(nicknameItem.name);
+				}
+			} else if (stat.role !== "Private") {
+				missingInFile.push(stat.nickname);
+			}
+		});
+
+		return { missingInDiscord, missingInFile, membersStats };
+	}
+
+	async _updateRatingRoles(membersStats) {
+		const ratingLevels = ratingRolesConfig.levels || [];
+		const promises = [];
+		const allRatingRolesList = ratingLevels.map(({ rolesAdd }) => rolesAdd).flat().filter((r) => r);
+
+		Object.values(membersStats).forEach(({ member, stats }) => {
+			const rolesForAdd = [];
+			const rolesForRemove = [];
+
+			stats.forEach(({ rating }) => {
+				rolesForAdd.push(...this._getRolesByRating(rating));
+			});
+
+			allRatingRolesList.forEach((role) => {
+				const foundRole = member.roles.cache.find((r) => r.id === role);
+				if (foundRole && !rolesForAdd.includes(role)) {
+					rolesForRemove.push(role);
+				}
+			});
+
+			promises.push(...setRoles(member, rolesForAdd, rolesForRemove));
+		});
+
+		await ensureDiscordRequests(promises);
+	}
+
+	_getRolesByRating(rating) {
+		rating = +rating;
+		const ratingLevels = ratingRolesConfig.levels || [];
+		let roles = [];
+
+		for (let { from, to, rolesAdd } of ratingLevels) {
+			if (rating >= from && rating <= to) {
+				roles = rolesAdd || [];
+				break;
+			}
+		}
+
+		return roles;
+	}
+
+	async _prepareStatFile(result) {
+		await fs.promises.writeFile(ratingStatFilePath, JSON.stringify(result, null, "\t  "));
+		const file = new AttachmentBuilder(ratingStatFilePath);
+		return file;
+	}
+
+	async deleteRatingUpdateStatFile() {
+		await fs.promises.unlink(ratingStatFilePath);
+	}
 }
 
-module.exports = new Ad();
+const adService = new Ad();
+
+module.exports = adService;

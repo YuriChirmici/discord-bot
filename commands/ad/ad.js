@@ -107,6 +107,8 @@ module.exports = {
 			messageId: adMessage.id,
 			channelId: adMessage.channel.id
 		}, Date.now() + timer * 60 * 1000);
+
+		await adService.processRatingRolesUpdate(interaction);
 	},
 
 	async createAd_rolesUsual(interaction, client, { messageProps, targetChannel }) {
