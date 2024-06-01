@@ -14,7 +14,7 @@ class AuthFlowService {
 		await this.clearOldMemberData(client, memberId);
 
 		const promises = [ this.createChannel(member) ];
-		if (authFlowConfig.initialRoles) {
+		if (authFlowConfig.initialRoles?.length) {
 			promises.push(member.roles.add(authFlowConfig.initialRoles));
 		}
 
