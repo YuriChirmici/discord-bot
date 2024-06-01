@@ -147,10 +147,14 @@ module.exports.setRoles = (member, rolesAdd = [], rolesRemove = []) => {
 module.exports.ensureDiscordRequests = async (requests, limit = 40) => {
 	const promisesParts = _splitArray(requests, limit);
 	const results = [];
-	for (let part of promisesParts) {
-		const result = await Promise.all(part);
+	for (let i = 0; i < promisesParts.length; i++) {
+		const result = await Promise.all(promisesParts[i]);
 		results.push(...result);
-		await new Promise((resolve) => setTimeout(resolve, 1000));
+
+		// skip sleep after last part
+		if (i !== promisesParts.length - 1) {
+			await new Promise((resolve) => setTimeout(resolve, 1000));
+		}
 	}
 
 	return results;

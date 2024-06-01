@@ -98,6 +98,7 @@ module.exports = {
 			await interaction.deleteReply();
 		}
 
+		await adService.processRatingRolesUpdate(interaction);
 		await adService.runAdDeletionTasks(client);
 
 		const adMessage = await targetChannel.send(messageProps);
@@ -107,8 +108,6 @@ module.exports = {
 			messageId: adMessage.id,
 			channelId: adMessage.channel.id
 		}, Date.now() + timer * 60 * 1000);
-
-		await adService.processRatingRolesUpdate(interaction);
 	},
 
 	async createAd_rolesUsual(interaction, client, { messageProps, targetChannel }) {
