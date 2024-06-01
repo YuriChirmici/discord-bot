@@ -120,7 +120,7 @@ class AuthFlowService {
 			member: interaction.member,
 			message: interaction.message,
 			question,
-			nextQuestionId: btn.next,
+			nextQuestionId: btn.next || question.next,
 			isSubmit: btn.isSubmit,
 			answerData: { buttonIndex }
 		});
