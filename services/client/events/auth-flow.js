@@ -1,5 +1,5 @@
 const { Events } = require("discord.js");
-const authFlowService = require("../../services/auth-flow");
+const authFlowService = require("../../auth-flow");
 
 const registerEvents = (client) => {
 	client.on(Events.GuildMemberAdd, async (member) => {

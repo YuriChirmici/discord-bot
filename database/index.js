@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 const fs = require("fs");
 const path = require("path");
-const { database } = require("../config.json");
+const configService = require("../services/config");
 
 const Models = {};
 const modelsPath = path.join(__dirname, "./models");
@@ -17,7 +17,7 @@ for (const file of modelFiles) {
 module.exports = {
 	connect: async () => {
 		try {
-			await mongoose.connect(database.connectionLink);
+			await mongoose.connect(configService.database.connectionLink);
 			console.log("Connected to DB successfully");
 		} catch (err) {
 			logError(err);

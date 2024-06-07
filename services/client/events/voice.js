@@ -1,9 +1,9 @@
 const { Events, ChannelType } = require("discord.js");
-const { voiceConnections } = require("../../config.json");
+const configService = require("../../config");
 
 const joinChannel = async ({ client, state }) => {
 	const guild = await client.guilds.fetch(state.guild.id);
-	const connection = voiceConnections.find(({ channelId }) => channelId === state.channelId);
+	const connection = configService.voiceConnections.find(({ channelId }) => channelId === state.channelId);
 	if (!connection) {
 		return;
 	}
@@ -29,7 +29,7 @@ const joinChannel = async ({ client, state }) => {
 };
 
 const leaveChannel = async ({ state }) => {
-	const connection = voiceConnections.find(({ categoryId }) => categoryId === state.channel.parent.id);
+	const connection = configService.voiceConnection.find(({ categoryId }) => categoryId === state.channel.parent.id);
 	if (!connection) {
 		return;
 	}

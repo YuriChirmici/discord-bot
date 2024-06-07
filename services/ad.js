@@ -1,6 +1,6 @@
 const fs = require("fs");
 const path = require("path");
-const { adsConfig, clanName, ratingRoles: ratingRolesConfig } = require("../config.json");
+const configService = require("./config");
 const { Models } = require("../database");
 const { getButtonsFlat, getDomByUrl, setRoles, ensureDiscordRequests } = require("./helpers");
 const { AttachmentBuilder } = require("discord.js");
@@ -225,7 +225,7 @@ class Ad {
 	}
 
 	getAdConfigByName(name) {
-		return adsConfig.ads.find((ad) => ad.name === name);
+		return configService.adsConfig.ads.find((ad) => ad.name === name);
 	}
 
 	getDefaultDate() {
@@ -266,7 +266,7 @@ class Ad {
 	}
 
 	async getPlayersStats() {
-		const statDom = await getDomByUrl("https://warthunder.com/en/community/claninfo/" + encodeURIComponent(clanName));
+		const statDom = await getDomByUrl("https://warthunder.com/en/community/claninfo/" + encodeURIComponent(configService.clanName));
 		const table = statDom.window.document.querySelector(".squadrons-members__table");
 		if (!table) {
 			return;
@@ -331,7 +331,7 @@ class Ad {
 
 	async processRatingRolesUpdate(interaction) {
 		const fileResult = await this.updateRatingRoles(interaction);
-		const channel = await interaction.guild.channels.fetch(ratingRolesConfig.resultChannelId);
+		const channel = await interaction.guild.channels.fetch(configService.ratingRoles.resultChannelId);
 		await channel.send({
 			content: "Результат обновления рейтинговых ролей:",
 			files: [ fileResult ]
@@ -387,7 +387,7 @@ class Ad {
 	}
 
 	async _updateRatingRoles(membersStats) {
-		const ratingLevels = ratingRolesConfig.levels || [];
+		const ratingLevels = configService.ratingRoles.levels || [];
 		const promises = [];
 		const allRatingRolesList = ratingLevels.map(({ rolesAdd }) => rolesAdd).flat().filter((r) => r);
 
@@ -414,7 +414,7 @@ class Ad {
 
 	_getRolesByRating(rating) {
 		rating = +rating;
-		const ratingLevels = ratingRolesConfig.levels || [];
+		const ratingLevels = configService.ratingRoles.levels || [];
 		let roles = [];
 
 		for (let { from, to, rolesAdd } of ratingLevels) {

@@ -1,4 +1,5 @@
 /node_modules
 /src
-config.json
+config/*
+!config/template
 .vscode/*

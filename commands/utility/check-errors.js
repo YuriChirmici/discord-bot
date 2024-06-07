@@ -2,18 +2,20 @@ const {
 	SlashCommandBuilder,
 	PermissionFlagsBits,
 } = require("discord.js");
-const { commandsPermission } = require("../../config.json");
+const configService = require("../../services/config");
 
 const NAME = getCommandName(__filename);
 
 module.exports = {
 	name: NAME,
-	data: new SlashCommandBuilder()
-		.setName(NAME)
-		.addStringOption(option => option.setName("count").setDescription("Количество").setRequired(false))
-		.setDescription("Возвращает последние ошибки")
-		.setDefaultMemberPermissions(PermissionFlagsBits[commandsPermission])
-		.setDMPermission(false),
+	get() {
+		return new SlashCommandBuilder()
+			.setName(NAME)
+			.addStringOption(option => option.setName("count").setDescription("Количество").setRequired(false))
+			.setDescription("Возвращает последние ошибки")
+			.setDefaultMemberPermissions(PermissionFlagsBits[configService.commandsPermission])
+			.setDMPermission(false);
+	},
 
 	async execute(interaction) {
 		const count = interaction.options.getString("count") || 1;

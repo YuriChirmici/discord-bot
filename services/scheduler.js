@@ -1,4 +1,4 @@
-const { getCommandByName } = require("./commands");
+const commandsService = require("./commands");
 const { Models } = require("../database");
 
 const INTERVAL = 3 * 60 * 1000;
@@ -7,7 +7,7 @@ const run = async (client) => {
 	const tasks = await Models.Scheduler.find({ executionDate: { $lt: new Date } });
 
 	for (let task of tasks) {
-		const command = getCommandByName(task.name);
+		const command = commandsService.getCommandByName(task.name);
 		if (!command?.task) {
 			logError(`Error executing ${task.name}, no command or task`);
 			continue;

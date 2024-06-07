@@ -1,0 +1,83 @@
+{
+    "ratingRoles": {
+		"levels": [
+			{
+				"from": 0,
+				"to": 99999,
+				"rolesAdd": [ "" ]
+			}
+		],
+		"resultChannelId": ""
+	},
+	"adsConfig": {
+		"ads": [
+			{
+				"type": "attendance",
+				"name": "attendance",
+				"defaults": {
+					"timer": 600,
+					"channelId": "",
+					"title": "",
+					"text": "",
+					"content": "",
+					"time": ""
+				},
+				"ratings": [ "" ],
+				"statisticsData": {
+					"rolesSelectors": [ "" ],
+					"rolesExceptions": [ "" ]
+				},
+				"buttons": [
+					[
+						{
+							"rolesAdd": [],
+							"emoji": ""
+						},
+						{
+							"rolesAdd": [],
+							"emoji": ""
+						},
+						{
+							"rolesAdd": [],
+							"emoji": ""
+						},
+						{
+							"rolesAdd": [],
+							"emoji": ""
+						},
+						{
+							"rolesAdd": [],
+							"emoji": "",
+							"save": true
+						}
+					]
+				]
+			},
+			{
+				"type": "rolesUsual",
+				"name": "vacation",
+				"multipleRoles": true,
+				"resultChannelId": "",
+				"defaults": {
+					"channelId": "",
+					"title": "",
+					"text": "",
+					"content": ""
+				},
+				"buttons": [
+					[
+						{
+							"rolesAdd": [],
+							"emoji": ""
+						},
+						{
+							"rolesAdd": [],
+							"emoji": ""
+						}
+					]
+				]
+			}
+		],
+		"borderColor": [ 128, 177, 235 ]
+	}
+}

@@ -1,17 +1,19 @@
 const {	SlashCommandBuilder, PermissionFlagsBits, ButtonStyle } = require("discord.js");
 const adService = require("../../services/ad");
-const { commandsPermission } = require("../../config.json");
+const configService = require("../../services/config");
 const { createButtons } = require("../../services/helpers");
 
 const NAME = getCommandName(__filename);
 
 module.exports = {
 	name: NAME,
-	data: new SlashCommandBuilder()
-		.setName(NAME)
-		.setDescription("Очищает статистику")
-		.setDefaultMemberPermissions(PermissionFlagsBits[commandsPermission])
-		.setDMPermission(false),
+	get() {
+		return new SlashCommandBuilder()
+			.setName(NAME)
+			.setDescription("Очищает статистику")
+			.setDefaultMemberPermissions(PermissionFlagsBits[configService.commandsPermission])
+			.setDMPermission(false);
+	},
 
 	async execute(interaction) {
 		const buttonsConfig = [ [ {

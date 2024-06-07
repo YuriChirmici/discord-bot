@@ -5,11 +5,13 @@ const NAME = getCommandName(__filename);
 
 module.exports = {
 	name: NAME,
-	data: new SlashCommandBuilder()
-		.setName(NAME)
-		.setDescription("Тест авторизации")
-		.setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-		.setDMPermission(false),
+	get() {
+		return new SlashCommandBuilder()
+			.setName(NAME)
+			.setDescription("Тест авторизации")
+			.setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+			.setDMPermission(false);
+	},
 
 	async execute(interaction, client) {
 		await authFlowService.startFlow(interaction.member, client);

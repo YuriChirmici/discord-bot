@@ -1,5 +1,5 @@
 const { ChannelType, EmbedBuilder } = require("discord.js");
-const { authFlow: authFlowConfig, adsConfig } = require("../config.json");
+const configService = require("./config");
 const { Models } = require("../database");
 const { createButtons, createSelect, getButtonsFlat } = require("../services/helpers");
 
@@ -14,8 +14,8 @@ class AuthFlowService {
 		await this.clearOldMemberData(client, memberId);
 
 		const promises = [ this.createChannel(member) ];
-		if (authFlowConfig.initialRoles?.length) {
-			promises.push(member.roles.add(authFlowConfig.initialRoles));
+		if (configService.authFlow.initialRoles?.length) {
+			promises.push(member.roles.add(configService.authFlow.initialRoles));
 		}
 
 		const [ channel ] = await Promise.all(promises);
@@ -42,8 +42,8 @@ class AuthFlowService {
 	async createChannel(member) {
 		const channel = await member.guild.channels.create({
 			type: ChannelType.GuildText,
-			name: authFlowConfig.channelName.replace("{{user}}", member.user.globalName),
-			parent: authFlowConfig.categoryId,
+			name: configService.authFlow.channelName.replace("{{user}}", member.user.globalName),
+			parent: configService.authFlow.categoryId,
 		});
 
 		await channel.permissionOverwrites.create(member.user.id, {
@@ -58,7 +58,7 @@ class AuthFlowService {
 			memberId,
 			channelId,
 			answers: [],
-			questions: authFlowConfig.questions
+			questions: configService.authFlow.questions
 		});
 	}
 
@@ -141,7 +141,7 @@ class AuthFlowService {
 		];
 
 		const nickname = this._buildNicknameFromAnswers(dbRecord, member.user.globalName);
-		if (authFlowConfig.resultChannelId) {
+		if (configService.authFlow.resultChannelId) {
 			promises.push(this.sendResult(dbRecord, client, member, { nickname }));
 		}
 
@@ -181,10 +181,10 @@ class AuthFlowService {
 	}
 
 	async sendResult(dbRecord, client, member, { nickname }) {
-		const resultChannelId = authFlowConfig.resultChannelId;
+		const resultChannelId = configService.authFlow.resultChannelId;
 		const channel = await client.channels.fetch(resultChannelId);
 
-		const resultHeader = this._prepareMessageText(authFlowConfig.resultHeader, { name: nickname || member.user.globalName });
+		const resultHeader = this._prepareMessageText(configService.authFlow.resultHeader, { name: nickname || member.user.globalName });
 		let result = "";
 
 		dbRecord.answers.forEach(({ questionId, buttonIndex, textAnswer, selectValues }) => {
@@ -214,7 +214,7 @@ class AuthFlowService {
 		});
 
 		const embed = new EmbedBuilder()
-			.setColor(adsConfig.borderColor)
+			.setColor(configService.adsConfig.borderColor)
 			.setTitle(resultHeader || "Title")
 			.setDescription(result);
 
@@ -222,11 +222,11 @@ class AuthFlowService {
 	}
 
 	_getStartQuestion() {
-		return authFlowConfig.questions.find(({ isStart }) => isStart);
+		return configService.authFlow.questions.find(({ isStart }) => isStart);
 	}
 
 	_getQuestionById(questionId) {
-		return authFlowConfig.questions.find(({ id }) => id === questionId);
+		return configService.authFlow.questions.find(({ id }) => id === questionId);
 	}
 
 	async textInput(message, client) {

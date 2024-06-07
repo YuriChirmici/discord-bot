@@ -3,17 +3,19 @@ const {
 	PermissionFlagsBits,
 } = require("discord.js");
 const adService = require("../../services/ad");
-const { commandsPermission } = require("../../config.json");
+const configService = require("../../services/config");
 
 const NAME = getCommandName(__filename);
 
 module.exports = {
 	name: NAME,
-	data: new SlashCommandBuilder()
-		.setName(NAME)
-		.setDescription("Удаляет роли, выданные через объявления")
-		.setDefaultMemberPermissions(PermissionFlagsBits[commandsPermission])
-		.setDMPermission(false),
+	get() {
+		return new SlashCommandBuilder()
+			.setName(NAME)
+			.setDescription("Удаляет роли, выданные через объявления")
+			.setDefaultMemberPermissions(PermissionFlagsBits[configService.commandsPermission])
+			.setDMPermission(false);
+	},
 
 	async execute(interaction, client) {
 		await interaction.reply({ content: "Роли будут очищены в течение 10 секунд", ephemeral: true });

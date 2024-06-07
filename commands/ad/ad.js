@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require("discord.js");
 const adService = require("../../services/ad");
-const { adsConfig, commandsPermission } = require("../../config.json");
+const configService = require("../../services/config");
 const { Models } = require("../../database");
 const { createButtons, getButtonsFlat } = require("../../services/helpers");
 
@@ -8,7 +8,7 @@ const NAME = getCommandName(__filename);
 
 const createAd = (title, content) => {
 	let ad = new EmbedBuilder()
-		.setColor(adsConfig.borderColor);
+		.setColor(configService.adsConfig.borderColor);
 
 	if (content) {
 		ad = ad.setDescription(content);
@@ -23,20 +23,22 @@ const createAd = (title, content) => {
 
 module.exports = {
 	name: NAME,
-	data: new SlashCommandBuilder()
-		.setName(NAME)
-		.setDescription(`Создает объявление. Типы: ${adsConfig.ads.map(({ name }) => name).join(", ")}`)
-		.addStringOption(option => option.setName("name").setDescription("Название объявления").setRequired(true).addChoices(
-			...adsConfig.ads.map(({ name }) => ({ name, value: name }))
-		))
-		.addChannelOption(option => option.setName("channel").setDescription("Целевой канал"))
-		.addIntegerOption(option => option.setName("timer").setDescription("Таймер для удаления объявления (минуты)"))
-		.addStringOption(option => option.setName("title").setDescription("Заголовок эмбеда"))
-		.addStringOption(option => option.setName("text").setDescription("Текст эмбеда"))
-		.addStringOption(option => option.setName("date").setDescription("Дата"))
-		.addStringOption(option => option.setName("time").setDescription("Время"))
-		.setDefaultMemberPermissions(PermissionFlagsBits[commandsPermission])
-		.setDMPermission(false),
+	get() {
+		return new SlashCommandBuilder()
+			.setName(NAME)
+			.setDescription(`Создает объявление. Типы: ${configService.adsConfig.ads.map(({ name }) => name).join(", ")}`)
+			.addStringOption(option => option.setName("name").setDescription("Название объявления").setRequired(true).addChoices(
+				...configService.adsConfig.ads.map(({ name }) => ({ name, value: name }))
+			))
+			.addChannelOption(option => option.setName("channel").setDescription("Целевой канал"))
+			.addIntegerOption(option => option.setName("timer").setDescription("Таймер для удаления объявления (минуты)"))
+			.addStringOption(option => option.setName("title").setDescription("Заголовок эмбеда"))
+			.addStringOption(option => option.setName("text").setDescription("Текст эмбеда"))
+			.addStringOption(option => option.setName("date").setDescription("Дата"))
+			.addStringOption(option => option.setName("time").setDescription("Время"))
+			.setDefaultMemberPermissions(PermissionFlagsBits[configService.commandsPermission])
+			.setDMPermission(false);
+	},
 
 	async execute(interaction, client) {
 		const adName = interaction.options.getString("name");

@@ -5,8 +5,7 @@
   "main": "server.js",
   "scripts": {
     "dev": "nodemon server.js --ignore src/",
-    "start": "node server.js",
-    "deploy-commands": "node deploy-commands",
+    "start": "node server.js prod",
     "eslint": "npx eslint ."
   },
   "author": "",

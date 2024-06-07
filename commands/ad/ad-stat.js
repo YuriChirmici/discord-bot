@@ -4,18 +4,20 @@ const {
 	EmbedBuilder
 } = require("discord.js");
 const adService = require("../../services/ad");
-const { adsConfig, commandsPermission } = require("../../config.json");
+const configService = require("../../services/config");
 
 const NAME = "ad-stat";
 
 module.exports = {
 	name: NAME,
-	data: new SlashCommandBuilder()
-		.setName(NAME)
-		.setDescription("Показывает статистику ролей, выданных через объявление")
-		.setDefaultMemberPermissions(PermissionFlagsBits[commandsPermission])
-		.addUserOption(option => option.setName("user").setDescription("Пользователь"))
-		.setDMPermission(false),
+	get() {
+		return new SlashCommandBuilder()
+			.setName(NAME)
+			.setDescription("Показывает статистику ролей, выданных через объявление")
+			.setDefaultMemberPermissions(PermissionFlagsBits[configService.commandsPermission])
+			.addUserOption(option => option.setName("user").setDescription("Пользователь"))
+			.setDMPermission(false);
+	},
 
 	async execute(interaction, client) {
 		const targetMember = interaction.options.getUser("user");
@@ -50,7 +52,7 @@ module.exports = {
 			content += row + "\n";
 			if (content.length > 1750 || i === rows.length - 1) {
 				const embed = new EmbedBuilder()
-					.setColor(adsConfig.borderColor)
+					.setColor(configService.adsConfig.borderColor)
 					.setTitle("Часть " + part)
 					.setDescription(content);
 

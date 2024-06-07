@@ -1,0 +1,17 @@
+{ 
+	"token": "",
+	"clientId": "",
+	"guildId": "",
+	"database": {
+		"connectionLink": ""
+	},
+    "clanName": "",
+    "commandsPermission": "ManageRoles",
+    "voiceConnections": [
+        {
+            "channelId": "",
+            "categoryId": "",
+            "channelName": ""
+        }
+    ]
+}

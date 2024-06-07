@@ -1,6 +1,6 @@
 const https = require("https");
 const { Events, PermissionFlagsBits } = require("discord.js");
-const { commandsPermission } = require("../../config.json");
+const configService = require("../../config");
 const { registerEvents: registerVoiceEvents } = require("./voice");
 const { registerEvents: registerAuthFlowEvents } = require("./auth-flow");
 
@@ -101,7 +101,7 @@ const registerEvents = (client) => {
 		try {
 			const msg = message.content.trim();
 			// check if is custom command with "!"
-			if (!message.member.permissions.has(PermissionFlagsBits[commandsPermission]) || msg[0] !== "!") {
+			if (!message.member.permissions.has(PermissionFlagsBits[configService.commandsPermission]) || msg[0] !== "!") {
 				return;
 			}
 
