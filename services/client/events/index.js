@@ -3,10 +3,12 @@ const { Events, PermissionFlagsBits } = require("discord.js");
 const configService = require("../../config");
 const { registerEvents: registerVoiceEvents } = require("./voice");
 const { registerEvents: registerAuthFlowEvents } = require("./auth-flow");
+const customIdService = require("../../custom-id-service");
 
 const findCommand = (commands, commandName) => {
-	const command = commands.get(commandName);
-	return command;
+	if (commandName) {
+		return commands.get(commandName);
+	}
 };
 
 const parseCustomArgs = (message, commandArgs) => {
@@ -67,14 +69,11 @@ const chatInputCommand = async ({ interaction, client }) => {
 };
 
 const buttonInteraction = async ({ interaction }) => {
-	const customId = interaction.customId;
-	interaction.commandName = customId.split("_")[0];
-	const command = findCommand(interaction.client.commands, interaction.commandName);
+	interaction.customData = await customIdService.getDataFromCustomId(interaction.customId);
+	const command = findCommand(interaction.client.commands, interaction.customData?.commandName);
 	if (!command) {
 		return;
 	}
-
-	interaction.customData = getDataFromCustomId(customId);
 
 	await command.buttonClick(interaction);
 };

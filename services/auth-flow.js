@@ -1,7 +1,8 @@
 const { ChannelType, EmbedBuilder } = require("discord.js");
 const configService = require("./config");
 const { Models } = require("../database");
-const { createButtons, createSelect, getButtonsFlat } = require("../services/helpers");
+const { createButtons, createSelect, getButtonsFlat } = require("./helpers");
+const customIdService = require("./custom-id-service");
 
 class AuthFlowService {
 	constructor() {
@@ -29,7 +30,10 @@ class AuthFlowService {
 			if (dbRecord?.channelId) {
 				const channel = await client.channels.fetch(dbRecord?.channelId);
 				if (channel) {
-					await channel.delete();
+					await Promise.all([
+						channel.delete(),
+						customIdService.clearCustomId({ channelId: channel.id })
+					]);
 				}
 			}
 		} catch (err) {
@@ -63,7 +67,7 @@ class AuthFlowService {
 	}
 
 	async sendQuestion({ dbRecord, client, question, channel, interaction }) {
-		const newMessage = this._prepareMessage(question, { memberId: dbRecord.memberId });
+		const newMessage = await this._prepareMessage(question, { memberId: dbRecord.memberId, channelId: channel.id });
 
 		if (interaction) {
 			await interaction.deferReply();
@@ -77,19 +81,24 @@ class AuthFlowService {
 			const nextQuestion = this._getQuestionById(question.next);
 			await this.sendQuestion({ dbRecord, client, question: nextQuestion, channel });
 		} else {
-			await Models.AuthFlow.updateOne({ memberId: dbRecord.memberId }, { currentQuestionId: question.id });
+			await Models.AuthFlow.updateOne(
+				{ memberId: dbRecord.memberId },
+				{ currentQuestionId: question.id, dateUpdated: new Date() }
+			);
 		}
 	}
 
-	_prepareMessage(question, { memberId }) {
+	async _prepareMessage(question, { memberId, channelId }) {
 		const components = [];
+		const customIdData = { commandName: this.NAME, channelId, data: { questionId: question.id } };
 		if (question.select) {
-			const customId = `${this.NAME}_${JSON.stringify({ questionId: question.id })}`;
+			const customId = await customIdService.createCustomId(customIdData);
 			components.push(createSelect(customId, question.select));
 		}
 
 		if (question.buttons?.length) {
-			components.push(...createButtons(question.buttons, { prefix: this.NAME }, { questionId: question.id }));
+			const buttons = await createButtons(question.buttons, customIdData);
+			components.push(...buttons);
 		}
 
 		return {
@@ -137,7 +146,11 @@ class AuthFlowService {
 		const promises = [
 			this._changeResultRoles(dbRecord, member),
 			channel.delete(),
-			Models.AuthFlow.updateOne({ memberId: dbRecord.memberId }, { completed: true, currentQuestionId: null })
+			Models.AuthFlow.updateOne(
+				{ memberId: dbRecord.memberId },
+				{ completed: true, currentQuestionId: null,	dateUpdated: new Date() }
+			),
+			customIdService.clearCustomId({ channelId: channel.id })
 		];
 
 		const nickname = this._buildNicknameFromAnswers(dbRecord, member.user.globalName);

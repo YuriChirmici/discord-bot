@@ -19,10 +19,3 @@ global.sendLongMessage = async (text, sender, limit = 1990) => {
 global.getCommandName = (filename) => {
 	return path.basename(filename).split(".")[0];
 };
-
-global.getDataFromCustomId = (customId = "") => {
-	const dataString = customId.substring(customId.indexOf("_") + 1);
-	try {
-		return JSON.parse(dataString);
-	} catch (err) {}
-};

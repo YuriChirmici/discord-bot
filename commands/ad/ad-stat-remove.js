@@ -20,7 +20,7 @@ module.exports = {
 			style: ButtonStyle.Danger,
 			text: "Подтвердить"
 		} ] ];
-		const components = createButtons(buttonsConfig, { prefix: NAME }, { action: "confirm" });
+		const components = await createButtons(buttonsConfig, { commandName: NAME, data: { action: "confirm" } });
 
 		await interaction.reply({
 			components,

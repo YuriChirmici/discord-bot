@@ -7,25 +7,25 @@ const {
 } = require("discord.js");
 const https = require("https");
 const jsdom = require("jsdom");
+const customIdService = require("./custom-id-service");
 
 const { JSDOM } = jsdom;
 
-module.exports.createButtons = (buttonsConfig = [], { prefix }, customData = {}) => {
+module.exports.createButtons = async (buttonsConfig = [], customIdData = {}) => {
+	customIdData.data ||= {};
+
 	let index = 0;
 	let components = [];
-	buttonsConfig.forEach((row) => {
+	for (let row of buttonsConfig) {
 		const buttons = [];
-		row.forEach((btn) => {
-			buttons.push(createButton({
-				customId: `${prefix}_${JSON.stringify({	index, ...customData })}`,
-				prefix,
-				...btn,
-			}));
+		for (let btn of row) {
+			const customId = await customIdService.createCustomId({ ...customIdData, data: { ...customIdData.data, index } });
+			buttons.push(createButton({ ...btn, customId }));
 			index++;
-		});
+		}
 
 		components.push(new ActionRowBuilder().addComponents(...buttons));
-	});
+	}
 
 	return components;
 };

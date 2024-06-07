@@ -1,5 +1,6 @@
 const { Events } = require("discord.js");
 const authFlowService = require("../../auth-flow");
+const customIdService = require("../../custom-id-service");
 
 const registerEvents = (client) => {
 	client.on(Events.GuildMemberAdd, async (member) => {
@@ -21,11 +22,8 @@ const registerEvents = (client) => {
 	client.on(Events.InteractionCreate, async (interaction) => {
 		try {
 			const args = { interaction, client };
-			const customId = interaction.customId || "";
-			interaction.customData = getDataFromCustomId(customId);
-
-			const commandName = customId.split("_")[0];
-			if (commandName !== authFlowService.NAME) {
+			interaction.customData = await customIdService.getDataFromCustomId(interaction.customId);
+			if (interaction.customData?.commandName !== authFlowService.NAME) {
 				return;
 			}
 

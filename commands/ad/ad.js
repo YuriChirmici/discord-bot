@@ -50,7 +50,7 @@ module.exports = {
 
 		const { channelId, timer, title, text, content } = this.getCommandOptions(interaction);
 
-		const messageProps = this.createAdMessage({ title, text, content }, adConfig);
+		const messageProps = await this.createAdMessage({ title, text, content }, adConfig);
 		const targetChannel = await this._prepareTargetChannel(client, channelId);
 
 		await this[creationFuncName](interaction, client, { messageProps, targetChannel, timer });
@@ -80,9 +80,9 @@ module.exports = {
 		return { adName, channelId, timer, title, text, content };
 	},
 
-	createAdMessage({ title, text, content }, adConfig) {
+	async createAdMessage({ title, text, content }, adConfig) {
 		const ad = createAd(title, content);
-		const components = createButtons(adConfig.buttons, { prefix: NAME }, { adName: adConfig.name });
+		const components = await createButtons(adConfig.buttons, { commandName: NAME, data: { adName: adConfig.name } });
 
 		return {
 			embeds: [ ad ],

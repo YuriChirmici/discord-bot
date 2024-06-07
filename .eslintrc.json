@@ -10,8 +10,7 @@
 	"globals": {
 		"logError": true,
 		"sendLongMessage": true,
-		"getCommandName": true,
-		"getDataFromCustomId": true
+		"getCommandName": true
 	},
 	"rules": {
 		"arrow-spacing": ["warn", { "before": true, "after": true }],
