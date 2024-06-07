@@ -10,6 +10,14 @@ const registerEvents = (client) => {
 		}
 	});
 
+	client.on(Events.GuildMemberRemove, async (member) => {
+		try {
+			await authFlowService.clearOldMemberData(client, member.id);
+		} catch (err) {
+			logError(err);
+		}
+	});
+
 	client.on(Events.InteractionCreate, async (interaction) => {
 		try {
 			const args = { interaction, client };
