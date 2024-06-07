@@ -333,6 +333,16 @@ class AuthFlowService {
 			await this.removeMessagesAfterDate(channel, messageDate);
 		}
 	}
+
+	async clearOldAuth(client) {
+		const authItems = await Models.AuthFlow.find({ completed: { $ne: true } });
+		for (let item of authItems) {
+			const expirationDate = new Date(new Date(item.dateUpdated).getTime() + 30 * 24 * 60 * 60 * 1000);
+			if (Date.now() > expirationDate.getTime()) {
+				await this.clearOldMemberData(client, item.memberId);
+			}
+		}
+	}
 }
 
 module.exports = new AuthFlowService();

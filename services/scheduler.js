@@ -1,4 +1,5 @@
 const commandsService = require("./commands");
+const authFlowService = require("./auth-flow");
 const { Models } = require("../database");
 
 const INTERVAL = 3 * 60 * 1000;
@@ -20,6 +21,16 @@ const run = async (client) => {
 		} catch (err) {
 			logError("Error executing scheduler task, " + JSON.stringify(task) + "\n" + err);
 		}
+	}
+
+	await runCustomTasks(client);
+};
+
+const runCustomTasks = async (client) => {
+	try {
+		await authFlowService.clearOldAuth(client);
+	} catch (err) {
+		logError(err);
 	}
 };
 
