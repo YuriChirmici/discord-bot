@@ -9,7 +9,6 @@
 	},
 	"globals": {
 		"logError": true,
-		"getLastErrors": true,
 		"sendLongMessage": true,
 		"getCommandName": true,
 		"getDataFromCustomId": true

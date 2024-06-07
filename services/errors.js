@@ -1,15 +1,16 @@
-const errors = [];
-const maxLength = 20;
+const clientService = require("./client");
+const configService = require("./config");
 
-global.logError = (err) => {
-	console.log(err);
-
-	errors.push(err);
-	if (errors.length > maxLength) {
-		errors.shift();
+global.logError = async (err) => {
+	try {
+		console.log(err);
+		const client = clientService.getClient();
+		const channel = await client.channels.fetch(configService.errorsChannelId);
+		const message = err.stack || err.message || err;
+		if (message) {
+			await channel.send(message);
+		}
+	} catch (err) {
+		console.log(err);
 	}
-};
-
-global.getLastErrors = (count = 1) => {
-	return errors.slice(errors.length - count).join("\n\n").trim();
 };
