@@ -6,7 +6,7 @@ const {
 const adService = require("../../services/ad");
 const configService = require("../../services/config");
 
-const NAME = "ad-stat";
+const NAME = getCommandName(__filename);
 
 module.exports = {
 	name: NAME,

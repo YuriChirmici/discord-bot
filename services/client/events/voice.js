@@ -29,13 +29,15 @@ const joinChannel = async ({ client, state }) => {
 };
 
 const leaveChannel = async ({ state }) => {
-	const connection = configService.voiceConnection.find(({ categoryId }) => categoryId === state.channel.parent.id);
+	const connection = configService.voiceConnections.find(({ categoryId }) => categoryId === state.channel.parent.id);
 	if (!connection) {
 		return;
 	}
 
 	if (state.channel.members.size === 0) {
-		await state.channel.delete();
+		try {
+			await state.channel.delete();
+		} catch (err) {}
 	}
 };
 
