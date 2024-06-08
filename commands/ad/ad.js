@@ -40,7 +40,7 @@ module.exports = {
 			.setDMPermission(false);
 	},
 
-	async execute(interaction, client) {
+	async execute({ interaction, client }) {
 		const adName = interaction.options.getString("name");
 		const adConfig = adService.getAdConfigByName(adName);
 		const creationFuncName = `createAd_${adConfig?.type}`;
@@ -132,7 +132,7 @@ module.exports = {
 		}
 	},
 
-	async buttonClick(interaction) {
+	async buttonClick({ interaction }) {
 		if (!interaction.customData) {
 			return;
 		}

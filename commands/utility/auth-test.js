@@ -13,7 +13,7 @@ module.exports = {
 			.setDMPermission(false);
 	},
 
-	async execute(interaction, client) {
+	async execute({ interaction, client }) {
 		await authFlowService.startFlow(interaction.member, client);
 		await interaction.reply({ content: "Тестовая авторизация начата", ephemeral: true });
 	},

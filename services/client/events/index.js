@@ -59,25 +59,6 @@ const getFileConfigArgs = (attachments) => new Promise((resolve, reject) => {
 	}).on("error", (err) => reject(err));
 });
 
-const chatInputCommand = async ({ interaction, client }) => {
-	const command = findCommand(interaction.client.commands, interaction.commandName);
-	if (!command) {
-		return;
-	}
-
-	await command.execute(interaction, client);
-};
-
-const buttonInteraction = async ({ interaction }) => {
-	interaction.customData = await customIdService.getDataFromCustomId(interaction.customId);
-	const command = findCommand(interaction.client.commands, interaction.customData?.commandName);
-	if (!command) {
-		return;
-	}
-
-	await command.buttonClick(interaction);
-};
-
 const registerEvents = (client) => {
 	registerVoiceEvents(client);
 	registerAuthFlowEvents(client);
@@ -85,11 +66,18 @@ const registerEvents = (client) => {
 	client.on(Events.InteractionCreate, async (interaction) => {
 		try {
 			const args = { interaction, client };
+			interaction.customData = await customIdService.getDataFromCustomId(interaction.customId);
+			const command = findCommand(interaction.client.commands, interaction.customData?.commandName);
+			if (!command) {
+				return;
+			}
 
 			if (interaction.isChatInputCommand()) {
-				return await chatInputCommand(args);
+				return await command.execute(args);
 			} else if (interaction.isButton()) {
-				return await buttonInteraction(args);
+				return await command.buttonClick(args);
+			} else if (interaction.isStringSelectMenu()) {
+				return await command.stringSelect(args);
 			}
 		} catch (err) {
 			logError(err);

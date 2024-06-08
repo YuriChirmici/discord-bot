@@ -15,7 +15,7 @@ module.exports = {
 			.setDMPermission(false);
 	},
 
-	async execute(interaction) {
+	async execute({ interaction }) {
 		const buttonsConfig = [ [ {
 			style: ButtonStyle.Danger,
 			text: "Подтвердить"
@@ -28,7 +28,7 @@ module.exports = {
 		});
 	},
 
-	async buttonClick(interaction) {
+	async buttonClick({ interaction }) {
 		const { action } = interaction.customData;
 		if (action === "confirm") {
 			await adService.clearStats();

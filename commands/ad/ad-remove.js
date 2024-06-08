@@ -17,7 +17,7 @@ module.exports = {
 			.setDMPermission(false);
 	},
 
-	async execute(interaction, client) {
+	async execute({ interaction, client }) {
 		await interaction.reply({ content: "Роли будут очищены в течение 10 секунд", ephemeral: true });
 		await adService.runAdDeletionTasks(client);
 	}

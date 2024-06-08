@@ -20,7 +20,7 @@ module.exports = {
 			.addAttachmentOption(option => option.setName("file").setDescription("CSV файл с никами").setRequired(true));
 	},
 
-	async execute(interaction) {
+	async execute({ interaction }) {
 		await interaction.reply({ content: "Команда будет обработана в ближайшее время.", ephemeral: true });
 
 		const file = interaction.options.getAttachment("file");

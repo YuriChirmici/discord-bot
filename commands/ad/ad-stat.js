@@ -19,7 +19,7 @@ module.exports = {
 			.setDMPermission(false);
 	},
 
-	async execute(interaction, client) {
+	async execute({ interaction, client }) {
 		const targetMember = interaction.options.getUser("user");
 
 		if (targetMember) {
