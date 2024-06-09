@@ -5,7 +5,7 @@ const customIdService = require("../../custom-id-service");
 const registerEvents = (client) => {
 	client.on(Events.GuildMemberAdd, async (member) => {
 		try {
-			await formsService.startForm(member, client, "auth");
+			await formsService.startForm({ member, client, formName: "auth" });
 		} catch (err) {
 			logError(err);
 		}
@@ -36,6 +36,8 @@ const registerEvents = (client) => {
 				await formsService.buttonClick(args);
 			} else if (interaction.isStringSelectMenu()) {
 				await formsService.stringSelect(args);
+			} else if (interaction.isModalSubmit()) {
+				return await formsService.submitModal(args);
 			}
 		} catch (err) {
 			logError(err);

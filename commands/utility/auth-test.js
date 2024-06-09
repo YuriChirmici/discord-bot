@@ -14,7 +14,13 @@ module.exports = {
 	},
 
 	async execute({ interaction, client }) {
-		await formsService.startForm(interaction.member, client, "auth");
-		await interaction.reply({ content: "Тестовая авторизация начата", ephemeral: true });
+		const { channel } = await formsService.startForm({
+			interaction,
+			member: interaction.member,
+			client,
+			formName: "auth"
+		});
+
+		await interaction.reply({ content: `Заявка создана, перейдите в ветку <#${channel.id}>`, ephemeral: true });
 	},
 };

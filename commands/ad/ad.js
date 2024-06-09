@@ -253,7 +253,12 @@ module.exports = {
 				return;
 			}
 
-			const { channel } = await formsService.startForm(interaction.member, client, memberCommand);
+			const { channel } = await formsService.startForm({
+				interaction,
+				member: interaction.member,
+				client,
+				formName: memberCommand
+			});
 
 			await interaction.reply({
 				content: `Заявка создана, перейдите в ветку <#${channel.id}>`,

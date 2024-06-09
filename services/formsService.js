@@ -1,8 +1,15 @@
 const { ChannelType, EmbedBuilder, ThreadAutoArchiveDuration } = require("discord.js");
 const configService = require("./config");
 const { Models } = require("../database");
-const { createButtons, createSelect, getButtonsFlat, removeMessagesAfterDate } = require("./helpers");
 const customIdService = require("./custom-id-service");
+const {
+	createButtons,
+	createSelect,
+	createModal,
+	getButtonsFlat,
+	removeMessagesAfterDate,
+	generateRandomKey
+} = require("./helpers");
 
 class FormsService {
 	constructor() {
@@ -14,7 +21,7 @@ class FormsService {
 		return command.type === "form" ? command : null;
 	}
 
-	async startForm(member, client, formName) {
+	async startForm({ interaction, member, client, formName }) {
 		const memberId = member.id;
 		const form = this.getFormByName(formName);
 		await this.clearOldMemberData(client, memberId, formName);
@@ -26,7 +33,7 @@ class FormsService {
 
 		const [ channel ] = await Promise.all(promises);
 		const dbRecord = await this.createDbRecord({ memberId, channelId: channel.id, formName });
-		await this.sendQuestion({ dbRecord, client, question: this._getStartQuestion(form), channel, formName });
+		await this.sendQuestion({ interaction, dbRecord, question: this._getStartQuestion(form), channel, formName, preventDefer: true });
 
 		return { channel };
 	}
@@ -71,21 +78,37 @@ class FormsService {
 		return form.questions.find(({ isStart }) => isStart);
 	}
 
-	async sendQuestion({ dbRecord, client, question, channel, interaction, formName }) {
-		const messageOptions = { memberId: dbRecord.memberId, channelId: channel.id, formName };
-		const newMessage = await this._prepareMessage(question, messageOptions);
+	async sendQuestion(props) {
+		const { interaction, dbRecord, question, channel, formName, preventDefer } = props;
+		const customIdData = { commandName: this.NAME, channelId: channel.id, data: { questionId: question.id, formName } };
 
-		if (interaction) {
-			await interaction.deferReply();
-			await interaction.deleteReply();
+		if (question.modal) {
+			if (!interaction || !interaction.showModal) {
+				return;
+			}
+
+			const customId = await customIdService.createCustomId(customIdData);
+			const modal = createModal(customId, question.modal);
+			await interaction.showModal(modal);
+			return;
 		}
+
+		if (interaction && !preventDefer) {
+			try {
+				await interaction.deferReply();
+				await interaction.deleteReply();
+			} catch (err) {}
+		}
+
+		const messageOptions = { memberId: dbRecord.memberId };
+		const newMessage = await this._prepareMessage(question, messageOptions, customIdData);
 
 		await channel.send(newMessage);
 
 		if (question.next && question.skipAnswer) {
 			// for cases when we should send next question immediately after previous one
 			const nextQuestion = this._getQuestionById(question.next, formName);
-			await this.sendQuestion({ dbRecord, client, question: nextQuestion, channel, formName });
+			await this.sendQuestion({ ...props, question: nextQuestion });
 		} else {
 			await Models.Form.updateOne(
 				{ memberId: dbRecord.memberId, formName },
@@ -94,9 +117,8 @@ class FormsService {
 		}
 	}
 
-	async _prepareMessage(question, { memberId, channelId, formName }) {
+	async _prepareMessage(question, { memberId }, customIdData) {
 		const components = [];
-		const customIdData = { commandName: this.NAME, channelId, data: { questionId: question.id, formName } };
 		if (question.select) {
 			const customId = await customIdService.createCustomId(customIdData);
 			components.push(createSelect(customId, question.select));
@@ -161,7 +183,7 @@ class FormsService {
 
 		const question = this._getQuestionById(currentQuestionId, dbRecord.formName);
 		if (question.withTextAnswer && !question.textAnswerKey) {
-			question.textAnswerKey = "id_" + Date.now();
+			question.textAnswerKey = generateRandomKey();
 		}
 
 		if (!question.textAnswerKey) {
@@ -179,20 +201,16 @@ class FormsService {
 			nextQuestionId: question.next,
 			isSubmit: question.isSubmit,
 			answerData: {
-				textAnswer: {
+				textAnswers: [ {
 					key: question.textAnswerKey,
 					text: messageText,
-				}
+				} ]
 			}
 		});
 	}
 
 	_buildNicknameFromAnswers(dbRecord, globalName) {
-		const textAnswers = {};
-		dbRecord.answers.forEach(({ textAnswer }) => {
-			textAnswers[textAnswer.key] = textAnswer.text;
-		});
-
+		const textAnswers = this._getTextAnswersObject(dbRecord);
 		let { nickname, name, regiment } = textAnswers;
 
 		nickname ||= globalName || "";
@@ -202,6 +220,19 @@ class FormsService {
 		}
 
 		return result.substring(0, 32);
+	}
+
+	_getTextAnswersObject(dbRecord) {
+		const resultTextAnswers = {};
+		dbRecord.answers.forEach(({ textAnswers }) => {
+			if (!textAnswers?.length) {
+				return;
+			}
+
+			textAnswers.forEach(({ key, text }) => resultTextAnswers[key] = text);
+		});
+
+		return resultTextAnswers;
 	}
 
 	async stringSelect({ interaction, client }) {
@@ -225,6 +256,39 @@ class FormsService {
 		});
 	}
 
+	async submitModal({ interaction, client }) {
+		const { questionId, formName } = interaction.customData;
+		const question = this._getQuestionById(questionId, formName);
+		if (!question.modal?.items?.length) {
+			return;
+		}
+
+		const textAnswers = [];
+		question.modal.items.flat().forEach((item) => {
+			if (item.type === "text") {
+				textAnswers.push({
+					key: item.key || item.label,
+					text: interaction.fields.getTextInputValue(item.key)
+				});
+			}
+		});
+
+		await this.onAnswer({
+			client,
+			interaction,
+			formName,
+			channel: interaction.channel,
+			member: interaction.member,
+			message: interaction.message,
+			question,
+			nextQuestionId: question.next,
+			isSubmit: question.isSubmit,
+			answerData: {
+				textAnswers
+			}
+		});
+	}
+
 	async onAnswer({ client, interaction, formName, channel, member, message, question, nextQuestionId, isSubmit, answerData = {} }) {
 		const questionId = question.id;
 		const memberId = member.id;
@@ -244,7 +308,7 @@ class FormsService {
 
 		if (nextQuestionId) {
 			const nextQuestion = this._getQuestionById(nextQuestionId, formName);
-			await this.sendQuestion({ dbRecord, client, question: nextQuestion, channel, interaction, formName });
+			await this.sendQuestion({ dbRecord, question: nextQuestion, channel, interaction, formName });
 		} else if (isSubmit) {
 			await this.submit({ dbRecord, member, channel, client, formName });
 		}
@@ -330,9 +394,28 @@ class FormsService {
 
 	prepareResultText({ answers, formName, member }) {
 		let result = "";
-		answers.forEach(({ questionId, buttonIndex, textAnswer, selectValues }) => {
+		answers.forEach(({ questionId, buttonIndex, textAnswers, selectValues }) => {
 			const question = this._getQuestionById(questionId, formName);
 			if (question.hideInResult) {
+				return;
+			}
+
+			if (question.modal) {
+				let questionDataText = "";
+				question.modal.items.forEach(({ label, key, resultText }) => {
+					let textAnswer = textAnswers.find((t) => t.key === key);
+					if (!textAnswer) {
+						textAnswer = textAnswers.find((t) => t.key === label);
+					}
+
+					if (!textAnswer?.text) {
+						return;
+					}
+
+					questionDataText += `Q: ${resultText || label || ""}:\nA: ${textAnswer.text}\n`;
+				});
+
+				result += questionDataText + "\n";
 				return;
 			}
 
@@ -340,8 +423,8 @@ class FormsService {
 			if (buttonIndex || buttonIndex === 0) {
 				const button = getButtonsFlat(question.buttons)[buttonIndex];
 				questionDataText += `${button.emoji || ""} ${button.resultText || button.text || ""}`.trim();
-			} else if (textAnswer?.text) {
-				questionDataText += textAnswer.text;
+			} else if (textAnswers?.length === 1) {
+				questionDataText += textAnswers[0].text;
 			} else if (selectValues?.length) {
 				const optionsTexts = [];
 				question.select.options.forEach((option) => {
@@ -356,7 +439,7 @@ class FormsService {
 			result += this._prepareMessageText(questionDataText, { memberId: member.id }) + "\n\n";
 		});
 
-		return result;
+		return result.trim();
 	}
 
 	async processAnswerOnPrevQuestion({ messageDate, dbRecord, channel, questionId }) {

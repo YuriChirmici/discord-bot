@@ -3,7 +3,10 @@ const {
 	ButtonBuilder,
 	ButtonStyle,
 	StringSelectMenuBuilder,
-	StringSelectMenuOptionBuilder
+	StringSelectMenuOptionBuilder,
+	ModalBuilder,
+	TextInputBuilder,
+	TextInputStyle
 } = require("discord.js");
 const https = require("https");
 const jsdom = require("jsdom");
@@ -20,7 +23,7 @@ module.exports.createButtons = async (buttonsConfig = [], customIdData = {}) => 
 		const buttons = [];
 		for (let btn of row) {
 			const customId = await customIdService.createCustomId({ ...customIdData, data: { ...customIdData.data, index } });
-			buttons.push(createButton({ ...btn, customId }));
+			buttons.push(createButton(customId, btn));
 			index++;
 		}
 
@@ -30,7 +33,7 @@ module.exports.createButtons = async (buttonsConfig = [], customIdData = {}) => 
 	return components;
 };
 
-const createButton = ({ customId, emoji, url, disabled, text, style }) => {
+const createButton = (customId, { emoji, url, disabled, text, style }) => {
 	let button = new ButtonBuilder().setStyle(style || ButtonStyle.Secondary);
 
 	if (emoji) {
@@ -74,7 +77,8 @@ module.exports.createSelect = (customId, { placeholder, min, max, options }) => 
 	options.forEach(({ value, text, description, emoji, isDefault }) => {
 		let option = new StringSelectMenuOptionBuilder()
 			.setLabel(text)
-			.setValue(value || text);
+			.setValue(value || text)
+			.setDefault(!!isDefault);
 
 		if (description) {
 			option = option.setDescription(description);
@@ -82,10 +86,6 @@ module.exports.createSelect = (customId, { placeholder, min, max, options }) => 
 
 		if (emoji) {
 			option = option.setEmoji(emoji);
-		}
-
-		if (isDefault) {
-			option = option.setDefault(isDefault);
 		}
 
 		optionsComponents.push(option);
@@ -96,6 +96,48 @@ module.exports.createSelect = (customId, { placeholder, min, max, options }) => 
 	}
 
 	return new ActionRowBuilder().addComponents([ select ]);
+};
+
+module.exports.createModal = (customId, { title, items }) => {
+	const modal = new ModalBuilder()
+		.setCustomId(customId)
+		.setTitle(title);
+
+	const components = [];
+	for (let item of items) {
+		const component = createTextInput(item.key, item);
+		components.push(new ActionRowBuilder().addComponents(component));
+	}
+
+	modal.addComponents(...components);
+
+	return modal;
+};
+
+const createTextInput = (customId, { label, style, min, max, placeholder, value, required }) => {
+	let component = new TextInputBuilder()
+		.setCustomId(customId)
+		.setLabel(label)
+		.setStyle(style || TextInputStyle.Short)
+		.setRequired(!!required);
+
+	if (min) {
+		component = component.setMinLength(min);
+	}
+
+	if (max) {
+		component = component.setMaxLength(max);
+	}
+
+	if (placeholder) {
+		component = component.setPlaceholder(placeholder);
+	}
+
+	if (value) {
+		component = component.setValue(value);
+	}
+
+	return component;
 };
 
 module.exports.getButtonsFlat = (buttonsRows) => buttonsRows.flat();
@@ -185,4 +227,8 @@ module.exports.removeMessagesAfterDate = async (channel, date) => {
 	messages = messages.filter((msg) => msg.createdTimestamp > date);
 
 	await channel.bulkDelete(messages);
+};
+
+module.exports.generateRandomKey = () => {
+	return "_id" + Math.round(Math.random() * 10 ** 9);
 };

@@ -57,6 +57,22 @@
 								"resultText": ""
 							}
 						]
+					},
+					"modal": {
+						"title": "",
+						"items": [
+							{
+								"key": "nickname",
+								"style": 1,
+								"label": "label",
+								"resultText": "",
+								"min": 0,
+								"max": 0,
+								"placeholder": "",
+								"value": "",
+								"required": true
+							}
+						]
 					}
 				}
 			]

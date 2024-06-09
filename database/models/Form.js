@@ -3,10 +3,10 @@ const mongoose = require("mongoose");
 const AnswerSchema = new mongoose.Schema({
 	questionId: String,
 	buttonIndex: Number,
-	textAnswer: {
+	textAnswers: [ {
 		key: String,
 		text: String,
-	},
+	} ],
 	selectValues: [ String ]
 }, { _id: false });
 
