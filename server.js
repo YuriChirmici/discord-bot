@@ -7,7 +7,7 @@ const { connect: dbConnect } = require("./database");
 const configService = require("./services/config");
 const commandsService = require("./services/commands");
 
-const isProd = process.argv[2] === "prod";
+const isDev = process.env.__DEV__ === "true";
 
 const srcPath = path.join(__dirname, "./src");
 if (!fs.existsSync(srcPath)) {
@@ -18,7 +18,7 @@ if (!fs.existsSync(srcPath)) {
 	try {
 		configService.init();
 		commandsService.init();
-		if (isProd) {
+		if (!isDev) {
 			await commandsService.deployCommands();
 		}
 		await clientService.login();
