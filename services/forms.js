@@ -1,7 +1,7 @@
 const { ChannelType, EmbedBuilder, ThreadAutoArchiveDuration } = require("discord.js");
 const configService = require("./config");
 const { Models } = require("../database");
-const customIdService = require("./custom-id-service");
+const customIdService = require("./custom-id");
 const {
 	createButtons,
 	createSelect,

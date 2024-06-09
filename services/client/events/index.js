@@ -3,7 +3,7 @@ const { Events, PermissionFlagsBits } = require("discord.js");
 const configService = require("../../config");
 const { registerEvents: registerVoiceEvents } = require("./voice");
 const { registerEvents: registerFormsEvents } = require("./forms");
-const customIdService = require("../../custom-id-service");
+const customIdService = require("../../custom-id");
 
 const findCommand = (commands, commandName) => {
 	if (commandName) {

@@ -1,5 +1,5 @@
 const commandsService = require("./commands");
-const formsService = require("./formsService");
+const formsService = require("./forms");
 const { Models } = require("../database");
 
 const INTERVAL = 3 * 60 * 1000;

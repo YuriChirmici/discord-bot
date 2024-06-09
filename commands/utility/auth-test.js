@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, PermissionFlagsBits } = require("discord.js");
-const formsService = require("../../services/formsService");
+const formsService = require("../../services/forms");
 
 const NAME = getCommandName(__filename);
 

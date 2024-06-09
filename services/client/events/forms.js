@@ -1,6 +1,6 @@
 const { Events } = require("discord.js");
-const formsService = require("../../formsService");
-const customIdService = require("../../custom-id-service");
+const formsService = require("../../forms");
+const customIdService = require("../../custom-id");
 
 const registerEvents = (client) => {
 	client.on(Events.GuildMemberAdd, async (member) => {

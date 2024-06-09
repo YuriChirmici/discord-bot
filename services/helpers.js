@@ -10,7 +10,7 @@ const {
 } = require("discord.js");
 const https = require("https");
 const jsdom = require("jsdom");
-const customIdService = require("./custom-id-service");
+const customIdService = require("./custom-id");
 
 const { JSDOM } = jsdom;
 
