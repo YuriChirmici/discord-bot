@@ -2,7 +2,7 @@ const https = require("https");
 const { Events, PermissionFlagsBits } = require("discord.js");
 const configService = require("../../config");
 const { registerEvents: registerVoiceEvents } = require("./voice");
-const { registerEvents: registerAuthFlowEvents } = require("./auth-flow");
+const { registerEvents: registerFormsEvents } = require("./forms");
 const customIdService = require("../../custom-id-service");
 
 const findCommand = (commands, commandName) => {
@@ -61,13 +61,18 @@ const getFileConfigArgs = (attachments) => new Promise((resolve, reject) => {
 
 const registerEvents = (client) => {
 	registerVoiceEvents(client);
-	registerAuthFlowEvents(client);
+	registerFormsEvents(client);
 
 	client.on(Events.InteractionCreate, async (interaction) => {
 		try {
 			const args = { interaction, client };
-			interaction.customData = await customIdService.getDataFromCustomId(interaction.customId);
-			const command = findCommand(interaction.client.commands, interaction.customData?.commandName);
+			let commandName = interaction.commandName;
+			if (!commandName) {
+				interaction.customData = await customIdService.getDataFromCustomId(interaction.customId);
+				commandName = interaction.customData?.commandName;
+			}
+
+			const command = findCommand(interaction.client.commands, commandName);
 			if (!command) {
 				return;
 			}

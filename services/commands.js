@@ -37,8 +37,6 @@ class CommandService {
 	async deployCommands() {
 		try {
 			const body = this.commands.map((command) => command.data.toJSON());
-			console.log(`Started refreshing ${body.length} application (/) commands.`);
-
 			const { clientId, guildId, token } = configService;
 			const rest = new REST().setToken(token);
 			const data = await rest.put(Routes.applicationGuildCommands(clientId, guildId),	{ body });

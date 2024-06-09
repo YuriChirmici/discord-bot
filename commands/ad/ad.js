@@ -2,7 +2,9 @@ const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require("disc
 const adService = require("../../services/ad");
 const configService = require("../../services/config");
 const { Models } = require("../../database");
-const { createButtons, getButtonsFlat } = require("../../services/helpers");
+const { createButtons, createSelect, getButtonsFlat } = require("../../services/helpers");
+const customIdService = require("../../services/custom-id-service");
+const formsService = require("../../services/formsService");
 
 const NAME = getCommandName(__filename);
 
@@ -82,7 +84,22 @@ module.exports = {
 
 	async createAdMessage({ title, text, content }, adConfig) {
 		const ad = createAd(title, content);
-		const components = await createButtons(adConfig.buttons, { commandName: NAME, data: { adName: adConfig.name } });
+		let components = [];
+		const customIdData = { commandName: NAME, data: { adName: adConfig.name } };
+		if (adConfig.select) {
+			let select = adConfig.select;
+			if (adConfig.name === adService.commandsConfigName) {
+				select = this.getCommandsSelect(adConfig);
+			}
+
+			const customId = await customIdService.createCustomId(customIdData);
+			components.push(createSelect(customId, select));
+		}
+
+		if (adConfig.buttons?.length) {
+			const buttons = await createButtons(adConfig.buttons, customIdData);
+			components.push(...buttons);
+		}
 
 		return {
 			embeds: [ ad ],
@@ -118,6 +135,25 @@ module.exports = {
 		await targetChannel.send(messageProps);
 	},
 
+	async createAd_memberCommands(interaction, client, { messageProps, targetChannel }) {
+		await interaction.deferReply();
+		await interaction.deleteReply();
+		await targetChannel.send(messageProps);
+	},
+
+	getCommandsSelect(adConfig) {
+		const commands = configService.memberCommands.filter(({ hideInAd }) => !hideInAd);
+		const select = {
+			...adConfig.select,
+			options: commands.map((command) => ({
+				...(command.optionData || {}),
+				value: command.name
+			}))
+		};
+
+		return select;
+	},
+
 	async _prepareTargetChannel(client, channelId) {
 		if (!channelId) {
 			return;
@@ -142,7 +178,7 @@ module.exports = {
 
 		const adConfig = adService.getAdConfigByName(adName);
 		if (!adConfig) {
-			return logError("No defined config for " + adName);
+			return;
 		}
 
 		const buttonConfig = getButtonsFlat(adConfig.buttons)[buttonIndex];
@@ -190,6 +226,40 @@ module.exports = {
 		}
 
 		return message;
+	},
+
+	async stringSelect({ interaction, client }) {
+		const { adName } = interaction.customData;
+		const adConfig = adService.getAdConfigByName(adName);
+		if (!adConfig) {
+			return;
+		}
+
+		if (adName === adService.commandsConfigName) {
+			await this.onCommandSelect({ interaction, client });
+		}
+	},
+
+	async onCommandSelect({ interaction, client }) {
+		const memberCommand = interaction.values?.[0];
+		const command = configService.memberCommands.find((c) => c.name === memberCommand);
+		if (command.type === "form") {
+			const oldForm = await formsService.getIncompleteForm(interaction.member.id, memberCommand);
+			if (oldForm) {
+				await interaction.reply({
+					content: `Заявка уже создана, перейдите в ветку <#${oldForm.channelId}>`,
+					ephemeral: true
+				});
+				return;
+			}
+
+			const { channel } = await formsService.startForm(interaction.member, client, memberCommand);
+
+			await interaction.reply({
+				content: `Заявка создана, перейдите в ветку <#${channel.id}>`,
+				ephemeral: true
+			});
+		}
 	},
 
 	async task(data, client) {

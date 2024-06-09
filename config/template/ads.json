@@ -1,5 +1,5 @@
 {
-    "ratingRoles": {
+	"ratingRoles": {
 		"levels": [
 			{
 				"from": 0,
@@ -76,6 +76,19 @@
 						}
 					]
 				]
+			},
+			{
+				"type": "memberCommands",
+				"name": "commands",
+				"defaults": {
+					"channelId": "",
+					"title": "",
+					"text": "",
+					"content": ""
+				},
+				"select": {
+					"placeholder": ""
+				}
 			}
 		],
 		"borderColor": [ 128, 177, 235 ]

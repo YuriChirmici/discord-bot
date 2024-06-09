@@ -1,5 +1,5 @@
 const commandsService = require("./commands");
-const authFlowService = require("./auth-flow");
+const formsService = require("./formsService");
 const { Models } = require("../database");
 
 const INTERVAL = 3 * 60 * 1000;
@@ -28,7 +28,7 @@ const run = async (client) => {
 
 const runCustomTasks = async (client) => {
 	try {
-		await authFlowService.clearOldAuth(client);
+		await formsService.clearOldForms(client);
 	} catch (err) {
 		logError(err);
 	}

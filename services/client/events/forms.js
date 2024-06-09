@@ -1,11 +1,11 @@
 const { Events } = require("discord.js");
-const authFlowService = require("../../auth-flow");
+const formsService = require("../../formsService");
 const customIdService = require("../../custom-id-service");
 
 const registerEvents = (client) => {
 	client.on(Events.GuildMemberAdd, async (member) => {
 		try {
-			await authFlowService.startFlow(member, client);
+			await formsService.startForm(member, client, "auth");
 		} catch (err) {
 			logError(err);
 		}
@@ -13,7 +13,7 @@ const registerEvents = (client) => {
 
 	client.on(Events.GuildMemberRemove, async (member) => {
 		try {
-			await authFlowService.clearOldMemberData(client, member.id);
+			await formsService.clearOldMemberData(client, member.id);
 		} catch (err) {
 			logError(err);
 		}
@@ -22,15 +22,20 @@ const registerEvents = (client) => {
 	client.on(Events.InteractionCreate, async (interaction) => {
 		try {
 			const args = { interaction, client };
-			interaction.customData = await customIdService.getDataFromCustomId(interaction.customId);
-			if (interaction.customData?.commandName !== authFlowService.NAME) {
+			let commandName = interaction.commandName;
+			if (!commandName) {
+				interaction.customData = await customIdService.getDataFromCustomId(interaction.customId);
+				commandName = interaction.customData?.commandName;
+			}
+
+			if (commandName !== formsService.NAME) {
 				return;
 			}
 
 			if (interaction.isButton()) {
-				await authFlowService.buttonClick(args);
+				await formsService.buttonClick(args);
 			} else if (interaction.isStringSelectMenu()) {
-				await authFlowService.stringSelect(args);
+				await formsService.stringSelect(args);
 			}
 		} catch (err) {
 			logError(err);
@@ -39,7 +44,7 @@ const registerEvents = (client) => {
 
 	client.on(Events.MessageCreate, async (message) => {
 		try {
-			await authFlowService.textInput(message, client);
+			await formsService.textInput(message, client);
 		} catch (err) {
 			logError(err);
 		}

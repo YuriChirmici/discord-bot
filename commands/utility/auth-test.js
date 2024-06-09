@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, PermissionFlagsBits } = require("discord.js");
-const authFlowService = require("../../services/auth-flow");
+const formsService = require("../../services/formsService");
 
 const NAME = getCommandName(__filename);
 
@@ -14,7 +14,7 @@ module.exports = {
 	},
 
 	async execute({ interaction, client }) {
-		await authFlowService.startFlow(interaction.member, client);
+		await formsService.startForm(interaction.member, client, "auth");
 		await interaction.reply({ content: "Тестовая авторизация начата", ephemeral: true });
 	},
 };

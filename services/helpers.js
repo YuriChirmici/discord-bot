@@ -71,10 +71,10 @@ module.exports.createSelect = (customId, { placeholder, min, max, options }) => 
 	}
 
 	const optionsComponents = [];
-	options.forEach(({ text, description, emoji, isDefault }) => {
+	options.forEach(({ value, text, description, emoji, isDefault }) => {
 		let option = new StringSelectMenuOptionBuilder()
 			.setLabel(text)
-			.setValue(text);
+			.setValue(value || text);
 
 		if (description) {
 			option = option.setDescription(description);
@@ -178,4 +178,11 @@ const _splitArray = (arr = [], limit) => {
 	}
 
 	return result;
+};
+
+module.exports.removeMessagesAfterDate = async (channel, date) => {
+	let messages = await channel.messages.fetch({ limit: 100 });
+	messages = messages.filter((msg) => msg.createdTimestamp > date);
+
+	await channel.bulkDelete(messages);
 };

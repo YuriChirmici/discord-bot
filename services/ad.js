@@ -14,6 +14,7 @@ class Ad {
 		this.deletionTaskName = "ad";
 		this.inactiveStatIndex = 99;
 		this.attendanceConfigName = "attendance";
+		this.commandsConfigName = "memberCommands";
 	}
 
 	async changeRoleButton({ member, adConfig, buttonIndex }) {

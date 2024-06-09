@@ -10,14 +10,14 @@ const AnswerSchema = new mongoose.Schema({
 	selectValues: [ String ]
 }, { _id: false });
 
-const AuthFlowSchema = new mongoose.Schema({
-	memberId: { type: String, unique: true },
+const FormSchema = new mongoose.Schema({
+	memberId: String,
 	channelId: { type: String, unique: true },
+	formName: String,
 	answers: [ AnswerSchema ],
 	completed: Boolean,
 	currentQuestionId: String,
-	questions: [ Object ],
 	dateUpdated: { type: Date, default: new Date() }
 }).index({ memberId: 1 });
 
-module.exports = mongoose.model("AuthFlow", AuthFlowSchema);
+module.exports = mongoose.model("Form", FormSchema);
