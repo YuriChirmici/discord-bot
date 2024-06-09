@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const configService = require("./config");
 const { Models } = require("../database");
-const { getButtonsFlat, getDomByUrl, setRoles, ensureDiscordRequests } = require("./helpers");
+const { getButtonsFlat, getDomByUrl, setRoles, ensureDiscordRequests, getDateFormatted } = require("./helpers");
 const { AttachmentBuilder } = require("discord.js");
 
 const srcPath = path.join(__dirname, "../src");
@@ -113,7 +113,7 @@ class Ad {
 			Models.AdStats.find({}).lean()
 		]);
 
-		const promises = [];
+		const promisesCb = [];
 
 		for (let member of members) {
 			const memberAdRoles = this.getMemberAdRoles(member, this.attendanceConfigName);
@@ -133,15 +133,15 @@ class Ad {
 			}
 
 			if (Object.keys(memberStat).length) {
-				promises.push(this.saveStats(member.id, memberStat));
+				promisesCb.push(() => this.saveStats(member.id, memberStat));
 			}
 
 			if (rolesForRemove.length) {
-				promises.push(member.roles.remove(rolesForRemove));
+				promisesCb.push(() => member.roles.remove(rolesForRemove));
 			}
 		}
 
-		await ensureDiscordRequests(promises);
+		await ensureDiscordRequests(promisesCb);
 	}
 
 	_checkInactive(member) {
@@ -230,18 +230,9 @@ class Ad {
 	}
 
 	getDefaultDate() {
-		const adminOffset = -180;
 		const date = new Date();
-		const offset = date.getTimezoneOffset();
-		date.setMinutes(date.getMinutes() + offset - adminOffset + 24 * 60);
-
-		let day = date.getDate();
-		day = day < 10 ? "0" + day : day;
-
-		let month = date.getMonth() + 1;
-		month = month < 10 ? "0" + month : month;
-
-		return `${day}.${month}`;
+		date.setMinutes(date.getMinutes() + 24 * 60);
+		return getDateFormatted(date).substring(0, 5);
 	}
 
 	getRatingByDate(date) {
@@ -389,7 +380,7 @@ class Ad {
 
 	async _updateRatingRoles(membersStats) {
 		const ratingLevels = configService.ratingRoles.levels || [];
-		const promises = [];
+		const promisesCb = [];
 		const allRatingRolesList = ratingLevels.map(({ rolesAdd }) => rolesAdd).flat().filter((r) => r);
 
 		Object.values(membersStats).forEach(({ member, stats }) => {
@@ -407,10 +398,10 @@ class Ad {
 				}
 			});
 
-			promises.push(...setRoles(member, rolesForAdd, rolesForRemove));
+			promisesCb.push(...setRoles(member, rolesForAdd, rolesForRemove));
 		});
 
-		await ensureDiscordRequests(promises);
+		await ensureDiscordRequests(promisesCb);
 	}
 
 	_getRolesByRating(rating) {

@@ -105,7 +105,7 @@ module.exports.createModal = (customId, { title, items }) => {
 
 	const components = [];
 	for (let item of items) {
-		const component = createTextInput(item.key, item);
+		const component = createTextInput(item.key || item.label, item);
 		components.push(new ActionRowBuilder().addComponents(component));
 	}
 
@@ -165,37 +165,35 @@ module.exports.getDomByUrl = async (url) => {
 
 // workaround, discord has bug when we add and remove roles at the same time
 module.exports.setRoles = (member, rolesAdd = [], rolesRemove = []) => {
-	let promises = [];
+	let promisesCb = [];
 
 	if (rolesRemove.length) {
 		if (rolesAdd.length) {
-			promises.push(Promise.resolve());
+			promisesCb.push(() => Promise.resolve());
 		}
 
-		promises.push(member.roles.remove(rolesRemove)
-			.then(() => {
-				if (rolesAdd.length) {
-					return member.roles.add(rolesAdd);
-				}
-			})
-		);
+		promisesCb.push(() => member.roles.remove(rolesRemove).then(() => {
+			if (rolesAdd.length) {
+				return member.roles.add(rolesAdd);
+			}
+		}));
 	} else {
-		promises.push(member.roles.add(rolesAdd));
+		promisesCb.push(() => member.roles.add(rolesAdd));
 	}
 
-	return promises;
+	return promisesCb;
 };
 
-module.exports.ensureDiscordRequests = async (requests, limit = 40) => {
-	const promisesParts = _splitArray(requests, limit);
+module.exports.ensureDiscordRequests = async (requestsCb, limit = 40) => {
+	const promisesParts = _splitArray(requestsCb, limit);
 	const results = [];
 	for (let i = 0; i < promisesParts.length; i++) {
-		const result = await Promise.all(promisesParts[i]);
+		const result = await Promise.all(promisesParts[i].map((r) => r()));
 		results.push(...result);
 
 		// skip sleep after last part
 		if (i !== promisesParts.length - 1) {
-			await new Promise((resolve) => setTimeout(resolve, 1000));
+			await sleep(1000);
 		}
 	}
 
@@ -232,3 +230,34 @@ module.exports.removeMessagesAfterDate = async (channel, date) => {
 module.exports.generateRandomKey = () => {
 	return "_id" + Math.round(Math.random() * 10 ** 9);
 };
+
+module.exports.getDateFormatted = (date) => {
+	const adminOffset = -180;
+	const offset = date.getTimezoneOffset();
+	date.setMinutes(date.getMinutes() + offset - adminOffset);
+
+	let day = date.getDate();
+	day = day < 10 ? "0" + day : day;
+
+	let month = date.getMonth() + 1;
+	month = month < 10 ? "0" + month : month;
+
+	let year = date.getFullYear();
+
+	return `${day}.${month}.${year}`;
+};
+
+module.exports.getModalAnswers = (modal, fields) => {
+	const textAnswers = {};
+	modal.items.forEach((item) => {
+		if (item.key) {
+			textAnswers[item.key] = fields.getTextInputValue(item.key);
+		} else {
+			textAnswers[item.label] = fields.getTextInputValue(item.label);
+		}
+	});
+
+	return textAnswers;
+};
+
+const sleep = module.exports.sleep = async (time) => await new Promise((resolve) => setTimeout(resolve, time));

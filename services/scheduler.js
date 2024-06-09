@@ -1,5 +1,6 @@
 const commandsService = require("./commands");
 const formsService = require("./forms");
+const memberCommandsService = require("./member-commands");
 const { Models } = require("../database");
 
 const INTERVAL = 3 * 60 * 1000;
@@ -29,6 +30,8 @@ const run = async (client) => {
 const runCustomTasks = async (client) => {
 	try {
 		await formsService.clearOldForms(client);
+		await memberCommandsService.runVacationStart(client);
+		await memberCommandsService.runVacationEnd(client);
 	} catch (err) {
 		logError(err);
 	}

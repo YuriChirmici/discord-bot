@@ -8,7 +8,8 @@ const {
 	createModal,
 	getButtonsFlat,
 	removeMessagesAfterDate,
-	generateRandomKey
+	generateRandomKey,
+	getModalAnswers
 } = require("./helpers");
 
 class FormsService {
@@ -263,15 +264,11 @@ class FormsService {
 			return;
 		}
 
-		const textAnswers = [];
-		question.modal.items.flat().forEach((item) => {
-			if (item.type === "text") {
-				textAnswers.push({
-					key: item.key || item.label,
-					text: interaction.fields.getTextInputValue(item.key)
-				});
-			}
-		});
+		const answers = getModalAnswers(question.modal, interaction.fields);
+		const textAnswers = Object.keys(answers).map((key) => ({
+			key,
+			text: answers[key]
+		}));
 
 		await this.onAnswer({
 			client,

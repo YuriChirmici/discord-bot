@@ -76,6 +76,44 @@
 					}
 				}
 			]
+		},
+		{
+			"type": "modal",
+			"name": "vacation",
+			"parentChannelId": "",
+			"resultHeader": "",
+			"resultChannelId": "",
+			"vacationRoles": [],
+			"optionData": {
+				"text": "",
+				"emoji": "",
+				"description": ""
+			},
+			"modal": {
+				"title": "",
+				"items": [
+					{
+						"key": "nickname",
+						"style": 1,
+						"label": "label",
+						"resultText": "",
+						"min": 0,
+						"max": 0,
+						"placeholder": "",
+						"value": "",
+						"required": true
+					}
+				]
+			}
+		},
+		{
+			"type": "action",
+			"name": "endVacation",
+			"optionData": {
+				"text": "",
+				"emoji": "",
+				"description": ""
+			}
 		}
 	]
 }

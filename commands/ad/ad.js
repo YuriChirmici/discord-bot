@@ -3,8 +3,8 @@ const adService = require("../../services/ad");
 const configService = require("../../services/config");
 const { Models } = require("../../database");
 const { createButtons, createSelect, getButtonsFlat } = require("../../services/helpers");
-const customIdService = require("../../services/custom-id-service");
-const formsService = require("../../services/formsService");
+const customIdService = require("../../services/custom-id");
+const memberCommandsService = require("../../services/member-commands");
 
 const NAME = getCommandName(__filename);
 
@@ -145,10 +145,16 @@ module.exports = {
 		const commands = configService.memberCommands.filter(({ hideInAd }) => !hideInAd);
 		const select = {
 			...adConfig.select,
-			options: commands.map((command) => ({
-				...(command.optionData || {}),
-				value: command.name
-			}))
+			options: [
+				{
+					text: "Сброс выбора",
+					value: memberCommandsService.clearSelectOptionValue
+				},
+				...commands.map((command) => ({
+					...(command.optionData || {}),
+					value: command.name
+				}))
+			]
 		};
 
 		return select;
@@ -242,29 +248,13 @@ module.exports = {
 
 	async onCommandSelect({ interaction, client }) {
 		const memberCommand = interaction.values?.[0];
-		const command = configService.memberCommands.find((c) => c.name === memberCommand);
-		if (command.type === "form") {
-			const oldForm = await formsService.getIncompleteForm(interaction.member.id, memberCommand);
-			if (oldForm) {
-				await interaction.reply({
-					content: `Заявка уже создана, перейдите в ветку <#${oldForm.channelId}>`,
-					ephemeral: true
-				});
-				return;
-			}
-
-			const { channel } = await formsService.startForm({
-				interaction,
-				member: interaction.member,
-				client,
-				formName: memberCommand
-			});
-
-			await interaction.reply({
-				content: `Заявка создана, перейдите в ветку <#${channel.id}>`,
-				ephemeral: true
-			});
+		if (memberCommand === memberCommandsService.clearSelectOptionValue) {
+			await interaction.deferReply();
+			await interaction.deleteReply();
+			return;
 		}
+
+		await memberCommandsService.executeCommand({ interaction, client, commandName: memberCommand });
 	},
 
 	async task(data, client) {

@@ -5,6 +5,10 @@ global.logError = async (err) => {
 	try {
 		console.log(err);
 		const client = clientService.getClient();
+		if (!client) {
+			return;
+		}
+
 		const channel = await client.channels.fetch(configService.errorsChannelId);
 		const message = err.stack || err.message || err;
 		if (message) {

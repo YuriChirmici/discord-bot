@@ -3,6 +3,7 @@ const { Events, PermissionFlagsBits } = require("discord.js");
 const configService = require("../../config");
 const { registerEvents: registerVoiceEvents } = require("./voice");
 const { registerEvents: registerFormsEvents } = require("./forms");
+const { registerEvents: registerMemberCommandsEvents } = require("./memberCommands");
 const customIdService = require("../../custom-id");
 
 const findCommand = (commands, commandName) => {
@@ -62,6 +63,7 @@ const getFileConfigArgs = (attachments) => new Promise((resolve, reject) => {
 const registerEvents = (client) => {
 	registerVoiceEvents(client);
 	registerFormsEvents(client);
+	registerMemberCommandsEvents(client);
 
 	client.on(Events.InteractionCreate, async (interaction) => {
 		try {
