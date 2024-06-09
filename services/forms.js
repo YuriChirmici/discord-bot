@@ -25,7 +25,7 @@ class FormsService {
 	async startForm({ interaction, member, client, formName }) {
 		const memberId = member.id;
 		const form = this.getFormByName(formName);
-		await this.clearOldMemberData(client, memberId, formName);
+		await this.clearOldMemberData({ client, memberId, formName });
 
 		const promises = [ this.createChannel(member, form, client) ];
 		if (form.initialRoles?.length) {
@@ -39,7 +39,7 @@ class FormsService {
 		return { channel };
 	}
 
-	async clearOldMemberData(client, memberId, formName) {
+	async clearOldMemberData({ client, memberId, formName }) {
 		try {
 			const dbRecord = await Models.Form.findOneAndDelete({ memberId, formName });
 			if (dbRecord?.channelId) {
@@ -452,7 +452,11 @@ class FormsService {
 		for (let item of formItems) {
 			const expirationDate = new Date(new Date(item.dateUpdated).getTime() + 30 * 24 * 60 * 60 * 1000);
 			if (Date.now() > expirationDate.getTime()) {
-				await this.clearOldMemberData(client, item.memberId, item.formName);
+				await this.clearOldMemberData({
+					client,
+					memberId: item.memberId,
+					formName: item.formName
+				});
 			}
 		}
 	}

@@ -80,7 +80,6 @@
 		{
 			"type": "modal",
 			"name": "vacation",
-			"parentChannelId": "",
 			"resultHeader": "",
 			"resultChannelId": "",
 			"vacationRoles": [],
@@ -90,17 +89,24 @@
 				"description": ""
 			},
 			"modal": {
-				"title": "",
+				"title": "Отпуск",
 				"items": [
 					{
-						"key": "nickname",
-						"style": 1,
-						"label": "label",
-						"resultText": "",
-						"min": 0,
-						"max": 0,
-						"placeholder": "",
-						"value": "",
+						"label": "Причина",
+						"max": 200
+					},
+					{
+						"key": "vacationStart",
+						"label": "Начало отпуска (в формате 29.09.2024)",
+						"min": 10,
+						"max": 10,
+						"required": true
+					},
+					{
+						"key": "vacationEnd",
+						"label": "Окончание отпуска (в формате 29.09.2024)",
+						"min": 10,
+						"max": 10,
 						"required": true
 					}
 				]

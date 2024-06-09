@@ -146,14 +146,14 @@ module.exports = {
 		const select = {
 			...adConfig.select,
 			options: [
+				...commands.map((command) => ({
+					...(command.optionData || {}),
+					value: command.name
+				})),
 				{
 					text: "Сброс выбора",
 					value: memberCommandsService.clearSelectOptionValue
 				},
-				...commands.map((command) => ({
-					...(command.optionData || {}),
-					value: command.name
-				}))
 			]
 		};
 

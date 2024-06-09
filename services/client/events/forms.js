@@ -13,7 +13,7 @@ const registerEvents = (client) => {
 
 	client.on(Events.GuildMemberRemove, async (member) => {
 		try {
-			await formsService.clearOldMemberData(client, member.id);
+			await formsService.clearOldMemberData({ client, memberId: member.id, formName: "auth" });
 		} catch (err) {
 			logError(err);
 		}

@@ -184,7 +184,7 @@ module.exports.setRoles = (member, rolesAdd = [], rolesRemove = []) => {
 	return promisesCb;
 };
 
-module.exports.ensureDiscordRequests = async (requestsCb, limit = 40) => {
+module.exports.ensureDiscordRequests = async (requestsCb, limit = 15) => {
 	const promisesParts = _splitArray(requestsCb, limit);
 	const results = [];
 	for (let i = 0; i < promisesParts.length; i++) {

@@ -210,7 +210,9 @@ class MemberCommandsService {
 			}
 
 			const member = members.find(({ id }) => id == profile.memberId);
-			dcPromisesCb.push(() => member.roles[isStart ? "add" : "remove"](vacationRoles));
+			if (member) {
+				dcPromisesCb.push(() => member.roles[isStart ? "add" : "remove"](vacationRoles));
+			}
 
 			promises.push(profileService.createOrUpdate(member.id, { [profileQueryKey]: null }));
 		}
