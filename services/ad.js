@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const configService = require("./config");
 const { Models } = require("../database");
-const { getButtonsFlat, getDomByUrl, setRoles, ensureDiscordRequests, getDateFormatted } = require("./helpers");
+const { getButtonsFlat, getDomByUrl, setRoles, getDateFormatted } = require("./helpers");
 const { AttachmentBuilder } = require("discord.js");
 
 const srcPath = path.join(__dirname, "../src");
@@ -113,7 +113,7 @@ class Ad {
 			Models.AdStats.find({}).lean()
 		]);
 
-		const promisesCb = [];
+		const promises = [];
 
 		for (let member of members) {
 			const memberAdRoles = this.getMemberAdRoles(member, this.attendanceConfigName);
@@ -133,15 +133,15 @@ class Ad {
 			}
 
 			if (Object.keys(memberStat).length) {
-				promisesCb.push(() => this.saveStats(member.id, memberStat));
+				promises.push(this.saveStats(member.id, memberStat));
 			}
 
 			if (rolesForRemove.length) {
-				promisesCb.push(() => member.roles.remove(rolesForRemove));
+				promises.push(member.roles.remove(rolesForRemove));
 			}
 		}
 
-		await ensureDiscordRequests(promisesCb);
+		await Promise.all(promises);
 	}
 
 	_checkInactive(member) {
@@ -157,12 +157,7 @@ class Ad {
 
 	// for attendance ad
 	async saveStats(memberId, roles) {
-		const existed = await Models.AdStats.findOne({ memberId });
-		if (existed) {
-			await Models.AdStats.updateOne({ memberId }, { roles });
-		} else {
-			await Models.AdStats.create({ memberId, roles });
-		}
+		await Models.AdStats.updateOne({ memberId }, { memberId, roles }, { upsert: true });
 	}
 
 	// for attendance ad
@@ -380,28 +375,15 @@ class Ad {
 
 	async _updateRatingRoles(membersStats) {
 		const ratingLevels = configService.ratingRoles.levels || [];
-		const promisesCb = [];
+		const promises = [];
 		const allRatingRolesList = ratingLevels.map(({ rolesAdd }) => rolesAdd).flat().filter((r) => r);
 
 		Object.values(membersStats).forEach(({ member, stats }) => {
-			const rolesForAdd = [];
-			const rolesForRemove = [];
-
-			stats.forEach(({ rating }) => {
-				rolesForAdd.push(...this._getRolesByRating(rating));
-			});
-
-			allRatingRolesList.forEach((role) => {
-				const foundRole = member.roles.cache.find((r) => r.id === role);
-				if (foundRole && !rolesForAdd.includes(role)) {
-					rolesForRemove.push(role);
-				}
-			});
-
-			promisesCb.push(...setRoles(member, rolesForAdd, rolesForRemove));
+			const rolesForAdd = stats.map(({ rating }) => this._getRolesByRating(rating)).flat();
+			promises.push(setRoles(member, rolesForAdd, allRatingRolesList));
 		});
 
-		await ensureDiscordRequests(promisesCb);
+		await Promise.all(promises);
 	}
 
 	_getRolesByRating(rating) {

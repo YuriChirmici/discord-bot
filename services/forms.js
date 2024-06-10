@@ -450,7 +450,7 @@ class FormsService {
 	async clearOldForms(client) {
 		const formItems = await Models.Form.find({ completed: { $ne: true } });
 		for (let item of formItems) {
-			const expirationDate = new Date(new Date(item.dateUpdated).getTime() + 30 * 24 * 60 * 60 * 1000);
+			const expirationDate = new Date(new Date(item.dateUpdated).getTime() + 7 * 24 * 60 * 60 * 1000);
 			if (Date.now() > expirationDate.getTime()) {
 				await this.clearOldMemberData({
 					client,

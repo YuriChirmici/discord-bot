@@ -2,7 +2,7 @@ const formsService = require("./forms");
 const customIdService = require("./custom-id");
 const configService = require("./config");
 const profileService = require("./profile");
-const { createModal, getDateFormatted, getModalAnswers, ensureDiscordRequests } = require("./helpers");
+const { createModal, getDateFormatted, getModalAnswers } = require("./helpers");
 const { Models } = require("../database");
 
 class MemberCommandsService {
@@ -201,7 +201,6 @@ class MemberCommandsService {
 		const membersRaw = await guild.members.fetch();
 		const members = Array.from(membersRaw.values());
 
-		const dcPromisesCb = [];
 		const promises = [];
 
 		for (let profile of profiles) {
@@ -211,13 +210,12 @@ class MemberCommandsService {
 
 			const member = members.find(({ id }) => id == profile.memberId);
 			if (member) {
-				dcPromisesCb.push(() => member.roles[isStart ? "add" : "remove"](vacationRoles));
+				promises.push(member.roles[isStart ? "add" : "remove"](vacationRoles));
 			}
 
 			promises.push(profileService.createOrUpdate(member.id, { [profileQueryKey]: null }));
 		}
 
-		await ensureDiscordRequests(dcPromisesCb);
 		await Promise.all(promises);
 	}
 

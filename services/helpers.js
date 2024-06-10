@@ -163,61 +163,36 @@ module.exports.getDomByUrl = async (url) => {
 	return new JSDOM(fileData);
 };
 
-// workaround, discord has bug when we add and remove roles at the same time
-module.exports.setRoles = (member, rolesAdd = [], rolesRemove = []) => {
-	let promisesCb = [];
+module.exports.setRoles = async (member, rolesAdd = [], rolesRemove = [], removeFirst = true) => {
+	const { preparedAdd, preparedRemove } = prepareMemberRoles(member, rolesAdd, rolesRemove, removeFirst);
 
-	if (rolesRemove.length) {
-		if (rolesAdd.length) {
-			promisesCb.push(() => Promise.resolve());
-		}
+	if (preparedRemove.length) {
+		await member.roles.remove(preparedRemove);
+	}
 
-		promisesCb.push(() => member.roles.remove(rolesRemove).then(() => {
-			if (rolesAdd.length) {
-				return member.roles.add(rolesAdd);
-			}
-		}));
+	if (preparedAdd.length) {
+		await member.roles.add(preparedAdd);
+	}
+};
+
+const prepareMemberRoles = module.exports.prepareMemberRoles = (member, rolesForAdd = [], rolesForRemove = [], removeFirst = true) => {
+	let preparedAdd, preparedRemove;
+
+	const hasMemberRole = (role) => member.roles.cache.find(({ id }) => id === role);
+
+	if (removeFirst) {
+		preparedRemove = rolesForRemove.filter((role) => !rolesForAdd.includes(role) && hasMemberRole(role));
+		preparedAdd = rolesForAdd.filter((role) => !hasMemberRole(role));
 	} else {
-		promisesCb.push(() => member.roles.add(rolesAdd));
+		preparedAdd = rolesForAdd.filter((role) => !rolesForRemove.includes(role) && !hasMemberRole(role));
+		preparedRemove = rolesForRemove.filter((role) => hasMemberRole(role));
 	}
 
-	return promisesCb;
-};
+	// remove duplicates
+	preparedAdd = preparedAdd.filter((role, i) => preparedAdd.indexOf(role) === i);
+	preparedRemove = preparedRemove.filter((role, i) => preparedRemove.indexOf(role) === i);
 
-module.exports.ensureDiscordRequests = async (requestsCb, limit = 15) => {
-	const promisesParts = _splitArray(requestsCb, limit);
-	const results = [];
-	for (let i = 0; i < promisesParts.length; i++) {
-		const result = await Promise.all(promisesParts[i].map((r) => r()));
-		results.push(...result);
-
-		// skip sleep after last part
-		if (i !== promisesParts.length - 1) {
-			await sleep(1000);
-		}
-	}
-
-	return results;
-};
-
-const _splitArray = (arr = [], limit) => {
-	const result = [];
-	let currentPart = [];
-
-	for (let i = 0; i < arr.length; i++) {
-		const item = arr[i];
-		currentPart.push(item);
-		if ((i + 1) % limit === 0) {
-			result.push(currentPart);
-			currentPart = [];
-		}
-	}
-
-	if (currentPart.length) {
-		result.push(currentPart);
-	}
-
-	return result;
+	return { preparedAdd, preparedRemove };
 };
 
 module.exports.removeMessagesAfterDate = async (channel, date) => {
@@ -260,4 +235,4 @@ module.exports.getModalAnswers = (modal, fields) => {
 	return textAnswers;
 };
 
-const sleep = module.exports.sleep = async (time) => await new Promise((resolve) => setTimeout(resolve, time));
+module.exports.sleep = async (time) => await new Promise((resolve) => setTimeout(resolve, time));
