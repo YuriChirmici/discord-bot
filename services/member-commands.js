@@ -128,8 +128,8 @@ class MemberCommandsService {
 		}
 
 		const { startDate, endDate } = this._createVacationDates(startDateStr, endDateStr);
-		if (endDate.getTime() < startDate.getTime()) {
-			return "Дата окончания отпуска не может быть меньше, чем дата его начала!";
+		if (endDate.getTime() < startDate.getTime() + 24 * 60 * 60 * 1000) {
+			return "Дата окончания отпуска должна быть минимум на день позже его начала!";
 		} else if (endDate.getTime() < Date.now()) {
 			return "Дата окончания отпуска не может быть раньше сегодняшнего дня!";
 		}
