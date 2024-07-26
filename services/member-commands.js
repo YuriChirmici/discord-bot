@@ -86,22 +86,39 @@ class MemberCommandsService {
 			return;
 		}
 
-		const result = await this.processVacationSubmit({ interaction, command });
-		if (command.resultChannelId && result) {
+		const result = await this._getModalResult({ interaction, command });
+		if (command.resultChannelId && result?.resultText) {
 			const channel = await client.channels.fetch(command.resultChannelId);
-			await channel.send(result);
+			await channel.send(result.resultText);
 		}
 	}
 
-	async processVacationSubmit({ interaction, command }) {
+	async _getModalResult({ interaction, command }) {
 		const answers = getModalAnswers(command.modal, interaction.fields);
+		let customResult;
+		if (command.name === this.vacationCommandName) {
+			customResult = await this._processVacationSubmit({ interaction, answers });
+		} else {
+			await interaction.reply({ content: "Результат сохранён!", ephemeral: true });
+		}
+
+		if (customResult?.hasError) {
+			return;
+		}
+
+		const resultText = this.prepareModalResult(command, answers, interaction.member);
+
+		return { resultText };
+	}
+
+	async _processVacationSubmit({ interaction, answers }) {
 		const vacationError = this._getDateValidationErr(answers.vacationStart, answers.vacationEnd);
 		if (vacationError) {
 			await interaction.reply({
 				content: "Ошибка: " + vacationError,
 				ephemeral: true
 			});
-			return;
+			return { hasError: true };
 		}
 
 		const { startDate, endDate } = this._createVacationDates(answers.vacationStart, answers.vacationEnd);
@@ -111,14 +128,10 @@ class MemberCommandsService {
 			vacationEnd: endDate,
 		});
 
-		const result = this.prepareModalResult(command, answers, interaction.member);
-
 		await interaction.reply({
 			content: `Отпуск до ${getDateFormatted(endDate)} записан. Приятного отдыха!`,
 			ephemeral: true
 		});
-
-		return result;
 	}
 
 	_getDateValidationErr(startDateStr, endDateStr) {
