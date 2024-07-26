@@ -1,27 +1,12 @@
-const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require("discord.js");
+const { SlashCommandBuilder, PermissionFlagsBits } = require("discord.js");
 const adService = require("../../services/ad");
 const configService = require("../../services/config");
 const { Models } = require("../../database");
-const { createButtons, createSelect, getButtonsFlat } = require("../../services/helpers");
+const { createButtons, createSelect, getButtonsFlat, createEmbed } = require("../../services/helpers");
 const customIdService = require("../../services/custom-id");
 const memberCommandsService = require("../../services/member-commands");
 
 const NAME = getCommandName(__filename);
-
-const createAd = (title, content) => {
-	let ad = new EmbedBuilder()
-		.setColor(configService.adsConfig.borderColor);
-
-	if (content) {
-		ad = ad.setDescription(content);
-	}
-
-	if (title) {
-		ad = ad.setTitle(title);
-	}
-
-	return ad;
-};
 
 module.exports = {
 	name: NAME,
@@ -101,7 +86,7 @@ module.exports = {
 	},
 
 	async createAdMessage({ title, text, content }, adConfig) {
-		const ad = createAd(title, content);
+		const embed = createEmbed({ description: content, title });
 		let components = [];
 		const customIdData = { commandName: NAME, data: { adName: adConfig.name } };
 		if (adConfig.select) {
@@ -120,7 +105,7 @@ module.exports = {
 		}
 
 		return {
-			embeds: [ ad ],
+			embeds: [ embed ],
 			components,
 			content: text
 		};

@@ -1,4 +1,4 @@
-const { ChannelType, EmbedBuilder, ThreadAutoArchiveDuration } = require("discord.js");
+const { ChannelType, ThreadAutoArchiveDuration } = require("discord.js");
 const configService = require("./config");
 const { Models } = require("../database");
 const customIdService = require("./custom-id");
@@ -9,7 +9,8 @@ const {
 	getButtonsFlat,
 	removeMessagesAfterDate,
 	generateRandomKey,
-	getModalAnswers
+	getModalAnswers,
+	createEmbed
 } = require("./helpers");
 const adService = require("./ad");
 
@@ -385,11 +386,7 @@ class FormsService {
 		const resultHeader = this._prepareMessageText(form.resultHeader, { name: nickname || member.user.globalName });
 		const resultText = this.prepareResultText({ answers: dbRecord.answers, formName, member });
 
-		const embed = new EmbedBuilder()
-			.setColor(configService.adsConfig.borderColor)
-			.setTitle(resultHeader || "Title")
-			.setDescription(resultText);
-
+		const embed = createEmbed({ description: resultText, title: resultHeader });
 		await channel.send({ embeds: [ embed ] });
 	}
 

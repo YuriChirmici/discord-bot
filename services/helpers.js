@@ -6,11 +6,13 @@ const {
 	StringSelectMenuOptionBuilder,
 	ModalBuilder,
 	TextInputBuilder,
-	TextInputStyle
+	TextInputStyle,
+	EmbedBuilder
 } = require("discord.js");
 const https = require("https");
 const jsdom = require("jsdom");
 const customIdService = require("./custom-id");
+const configService = require("./config");
 
 const { JSDOM } = jsdom;
 
@@ -236,3 +238,18 @@ module.exports.getModalAnswers = (modal, fields) => {
 };
 
 module.exports.sleep = async (time) => await new Promise((resolve) => setTimeout(resolve, time));
+
+module.exports.createEmbed = ({ description, title }) => {
+	let embed = new EmbedBuilder()
+		.setColor(configService.adsConfig.borderColor);
+
+	if (title) {
+		embed = embed.setTitle(title);
+	}
+
+	if (description) {
+		embed = embed.setDescription(description);
+	}
+
+	return embed;
+};

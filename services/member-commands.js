@@ -2,7 +2,7 @@ const formsService = require("./forms");
 const customIdService = require("./custom-id");
 const configService = require("./config");
 const profileService = require("./profile");
-const { createModal, getDateFormatted, getModalAnswers } = require("./helpers");
+const { createModal, getDateFormatted, getModalAnswers, createEmbed } = require("./helpers");
 const { Models } = require("../database");
 
 class MemberCommandsService {
@@ -84,9 +84,15 @@ class MemberCommandsService {
 
 		const result = await this._getModalResult({ interaction, command });
 		if (command.resultChannelId && result?.resultText) {
-			const channel = await client.channels.fetch(command.resultChannelId);
-			await channel.send(result.resultText);
+			await this.sendModalResult({ interaction, client, command, resultText: result.resultText });
 		}
+	}
+
+	async sendModalResult({ interaction, client, command, resultText }) {
+		const channel = await client.channels.fetch(command.resultChannelId);
+		const content = (command.resultHeader || "").replace("@User", `<@${interaction.member.id}>`) + "\n";
+		const embed = createEmbed({	description: resultText });
+		await channel.send({ embeds: [ embed ], content });
 	}
 
 	async _getModalResult({ interaction, command }) {
@@ -102,7 +108,7 @@ class MemberCommandsService {
 			return;
 		}
 
-		const resultText = this.prepareModalResult(command, answers, interaction.member);
+		const resultText = this.prepareModalResult(command, answers);
 
 		return { resultText };
 	}
@@ -172,8 +178,8 @@ class MemberCommandsService {
 		return dateStr.split(".").map((v) => +v);
 	}
 
-	prepareModalResult(command, answers, member) {
-		let result = (command.resultHeader || "").replace("@User", `<@${member.id}>`) + "\n";
+	prepareModalResult(command, answers) {
+		let result = "";
 		command.modal.items.forEach(({ label, key, resultText }) => {
 			let textAnswer = answers[key] || answers[label];
 			if (!textAnswer) {

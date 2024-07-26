@@ -1,10 +1,7 @@
-const {
-	SlashCommandBuilder,
-	PermissionFlagsBits,
-	EmbedBuilder
-} = require("discord.js");
+const {	SlashCommandBuilder, PermissionFlagsBits } = require("discord.js");
 const adService = require("../../services/ad");
 const configService = require("../../services/config");
+const { createEmbed } = require("../../services/helpers");
 
 const NAME = getCommandName(__filename);
 
@@ -51,11 +48,7 @@ module.exports = {
 			const row = rows[i];
 			content += row + "\n";
 			if (content.length > 1750 || i === rows.length - 1) {
-				const embed = new EmbedBuilder()
-					.setColor(configService.adsConfig.borderColor)
-					.setTitle("Часть " + part)
-					.setDescription(content);
-
+				const embed = createEmbed({ description: content, title: "Часть " + part });
 				embeds.push(embed);
 				content = "";
 				part++;
