@@ -69,11 +69,7 @@ class MemberCommandsService {
 		const modalData = JSON.parse(JSON.stringify(modal));
 		if (commandName === this.vacationCommandName) {
 			const dateStartItem = modalData.items.find(({ key }) => key === "vacationStart");
-			if (dateStartItem) {
-				const date = new Date();
-				date.setMinutes(date.getMinutes() + 24 * 60);
-				dateStartItem.value = getDateFormatted(date);
-			}
+			dateStartItem.value = getDateFormatted(new Date());
 		}
 
 		return modalData;
