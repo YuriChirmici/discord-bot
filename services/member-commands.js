@@ -31,7 +31,12 @@ class MemberCommandsService {
 	}
 
 	async _processCommand_form({ interaction, client, command }) {
-		const oldForm = await formsService.getIncompleteForm(interaction.member.id, command.name);
+		const oldForm = await Models.Form.findOne({
+			memberId: interaction.member.id,
+			formName: command.name,
+			completed: { $ne: true }
+		});
+
 		if (oldForm) {
 			await interaction.reply({
 				content: `Заявка уже создана, перейдите в ветку <#${oldForm.channelId}>`,

@@ -38,7 +38,8 @@
 								"emoji": "",
 								"rolesAdd": [ "" ], 
 								"rolesRemove": [ "" ], 
-								"isSubmit": true
+								"isSubmit": true,
+								"preserveBranch": true
 							}
 						]
 					],
@@ -55,7 +56,8 @@
 								"description": "",
 								"rolesAdd": [ "" ], 
 								"rolesRemove": [ "" ],
-								"resultText": ""
+								"resultText": "",
+								"preserveBranch": true
 							}
 						]
 					},
@@ -71,7 +73,8 @@
 								"max": 0,
 								"placeholder": "",
 								"value": "",
-								"required": true
+								"required": true,
+								"preserveBranch": true
 							}
 						]
 					}

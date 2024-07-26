@@ -30,7 +30,7 @@ class FormsService {
 	async startForm({ interaction, member, client, formName }) {
 		const memberId = member.id;
 		const form = this.getFormByName(formName);
-		await this.clearOldMemberData({ client, memberId, formName });
+		// await this.clearOldMemberData({ client, memberId, formName });
 
 		const promises = [ this.createChannel(member, form, client) ];
 		if (form.initialRoles?.length) {
@@ -44,24 +44,24 @@ class FormsService {
 		return { channel };
 	}
 
-	async clearOldMemberData({ client, memberId, formName }) {
-		try {
-			const dbRecord = await Models.Form.findOneAndDelete({ memberId, formName });
-			if (dbRecord?.channelId) {
-				const channel = await client.channels.fetch(dbRecord?.channelId);
-				if (channel) {
-					await Promise.all([
-						channel.delete(),
-						customIdService.clearCustomId({ channelId: channel.id })
-					]);
-				}
-			}
-		} catch (err) {
-			if (err.message !== "Unknown Channel") {
-				logError(err);
-			}
-		}
-	}
+	// async clearOldMemberData({ client, memberId, formName }) {
+	// 	try {
+	// 		const dbRecord = await Models.Form.findOneAndDelete({ memberId, formName });
+	// 		if (dbRecord?.channelId) {
+	// 			const channel = await client.channels.fetch(dbRecord?.channelId);
+	// 			if (channel) {
+	// 				await Promise.all([
+	// 					channel.delete(),
+	// 					customIdService.clearCustomId({ channelId: channel.id })
+	// 				]);
+	// 			}
+	// 		}
+	// 	} catch (err) {
+	// 		if (err.message !== "Unknown Channel") {
+	// 			logError(err);
+	// 		}
+	// 	}
+	// }
 
 	async createChannel(member, form) {
 		const channel = await member.guild.channels.fetch(form.parentChannelId);
@@ -117,7 +117,7 @@ class FormsService {
 			await this.sendQuestion({ ...props, question: nextQuestion });
 		} else {
 			await Models.Form.updateOne(
-				{ memberId: dbRecord.memberId, formName },
+				{ _id: dbRecord._id },
 				{ currentQuestionId: question.id, dateUpdated: new Date() }
 			);
 		}
@@ -180,10 +180,9 @@ class FormsService {
 		const channel = message.channel;
 		const memberId = message.member.id;
 
-		let dbRecord = await Models.Form.findOne({ memberId, channelId: channel.id }).lean();
+		let dbRecord = await Models.Form.findOne({ memberId, channelId: channel.id, completed: { $ne: true } }).lean();
 		const currentQuestionId = dbRecord?.currentQuestionId;
 		if (!currentQuestionId) {
-			// message in other channels
 			return;
 		}
 
@@ -295,7 +294,11 @@ class FormsService {
 		const questionId = question.id;
 		const memberId = member.id;
 
-		let dbRecord = await Models.Form.findOne({ memberId, formName }).lean();
+		let dbRecord = await Models.Form.findOne({ memberId, formName, channelId: channel.id, completed: { $ne: true } }).lean();
+		if (!dbRecord) {
+			return;
+		}
+
 		if (questionId !== dbRecord.currentQuestionId) {
 			const messageDate = message.createdTimestamp;
 			await this.processAnswerOnPrevQuestion({ messageDate, dbRecord, channel, questionId });
@@ -303,7 +306,7 @@ class FormsService {
 
 		dbRecord.answers.push({ questionId, ...answerData });
 		dbRecord = await Models.Form.findOneAndUpdate(
-			{ memberId, formName },
+			{ _id: dbRecord._id },
 			{ answers: dbRecord.answers, dateUpdated: new Date() },
 			{ new: true }
 		);
@@ -312,11 +315,11 @@ class FormsService {
 			const nextQuestion = this._getQuestionById(nextQuestionId, formName);
 			await this.sendQuestion({ dbRecord, question: nextQuestion, channel, interaction, formName });
 		} else if (isSubmit) {
-			await this.submit({ dbRecord, member, channel, client, formName });
+			await this.submit({ interaction, dbRecord, member, channel, client, formName });
 		}
 	}
 
-	async submit({ dbRecord, member, channel, client, formName }) {
+	async submit({ interaction, dbRecord, member, channel, client, formName }) {
 		const promises = [];
 		const form = this.getFormByName(formName);
 		const nickname = this._buildNicknameFromAnswers(dbRecord, member.user.globalName);
@@ -325,9 +328,9 @@ class FormsService {
 		}
 
 		promises.push(
-			this._changeResultRoles(dbRecord, member, formName),
+			this._changeResultRoles(dbRecord.answers, member, formName),
 			Models.Form.updateOne(
-				{ memberId: dbRecord.memberId, formName },
+				{ _id: dbRecord._id },
 				{ completed: true, currentQuestionId: null,	dateUpdated: new Date() }
 			),
 			customIdService.clearCustomId({ channelId: channel.id })
@@ -342,25 +345,50 @@ class FormsService {
 			}
 		}
 
-		await channel.delete();
+		const shouldDeleteBranch = !this._checkShouldPreserveBranch(dbRecord.answers, formName);
+		if (shouldDeleteBranch) {
+			await channel.delete();
+		} else {
+			await interaction.reply("Результат сохранён!");
+		}
 
 		if (form.resultChannelId) {
 			await this.sendResult({ dbRecord, client, member, nickname, formName });
 		}
 	}
 
-	async _changeResultRoles(dbRecord, member, formName) {
+	_checkShouldPreserveBranch(answers, formName) {
+		for (let { questionId, buttonIndex, selectValues } of answers) {
+			const question = this._getQuestionById(questionId, formName);
+			if (buttonIndex || buttonIndex === 0) {
+				const button = getButtonsFlat(question.buttons)[buttonIndex];
+				if (button.preserveBranch) {
+					return true;
+				}
+			} else if (selectValues?.length) {
+				const options = this._getSelectOptionsByValues(question.select.options, selectValues);
+				const preserveBranch = !!options.find(o => o.preserveBranch);
+				if (preserveBranch) {
+					return true;
+				}
+			}
+		}
+
+		return false;
+	}
+
+	async _changeResultRoles(answers, member, formName) {
 		const rolesAdd = [];
 		const rolesRemove = [];
 
-		dbRecord.answers.forEach(({ questionId, buttonIndex, selectValues }) => {
+		answers.forEach(({ questionId, buttonIndex, selectValues }) => {
 			const question = this._getQuestionById(questionId, formName);
 			if (buttonIndex || buttonIndex === 0) {
 				const button = getButtonsFlat(question.buttons)[buttonIndex];
 				rolesAdd.push(...(button.rolesAdd || []));
 				rolesRemove.push(...(button.rolesRemove || []));
 			} else if (selectValues?.length) {
-				const options = selectValues.map((value) => question.select.options.find((o) => o.text === value));
+				const options = this._getSelectOptionsByValues(question.select.options, selectValues);
 				const optionsRolesAdd = options.map((o) => o.rolesAdd || []).flat();
 				const optionsRolesRemove = options.map((o) => o.rolesRemove || []).flat();
 				rolesAdd.push(...optionsRolesAdd);
@@ -375,6 +403,10 @@ class FormsService {
 		if (rolesRemove.length) {
 			await member.roles.remove(rolesRemove);
 		}
+	}
+
+	_getSelectOptionsByValues(options, values) {
+		return options.filter((o) => values.includes(o.text));
 	}
 
 	async sendResult({ dbRecord, client, member, nickname, formName }) {
@@ -491,10 +523,6 @@ class FormsService {
 		if (!hasException) {
 			await member.kick();
 		}
-	}
-
-	async getIncompleteForm(memberId, formName) {
-		return await Models.Form.findOne({ memberId, formName, completed: { $ne: true } });
 	}
 }
 
