@@ -38,6 +38,7 @@ module.exports = {
 			.addStringOption(option => option.setName("text").setDescription("Текст эмбеда"))
 			.addStringOption(option => option.setName("date").setDescription("Дата"))
 			.addStringOption(option => option.setName("time").setDescription("Время"))
+			.addBooleanOption(option => option.setName("clear_roles").setDescription("Снятие ролей после удаления предыдущего объявления"))
 			.setDefaultMemberPermissions(PermissionFlagsBits[configService.commandsPermission])
 			.setDMPermission(false);
 	},
@@ -50,12 +51,12 @@ module.exports = {
 			return await interaction.reply("Неверные название или тип объявления");
 		}
 
-		const { channelId, timer, title, text, content } = this.getCommandOptions(interaction);
+		const { channelId, timer, title, text, content, clearRoles } = this.getCommandOptions(interaction);
 
 		const messageProps = await this.createAdMessage({ title, text, content }, adConfig);
 		const targetChannel = await this._prepareTargetChannel(client, channelId);
 
-		await this[creationFuncName](interaction, client, { messageProps, targetChannel, timer });
+		await this[creationFuncName](interaction, client, { messageProps, targetChannel, timer, clearRoles });
 	},
 
 	getCommandOptions(interaction) {
@@ -68,6 +69,7 @@ module.exports = {
 		const title = interaction.options.getString("title") || defaults.title || "";
 		const text = interaction.options.getString("text") || defaults.text || "";
 		let content = defaults.content || "";
+		let clearRoles;
 
 		if (adName === adService.attendanceConfigName) {
 			const date = interaction.options.getString("date") || adService.getDefaultDate();
@@ -77,9 +79,25 @@ module.exports = {
 				.replaceAll("{{date}}", date)
 				.replaceAll("{{time}}", time)
 				.replaceAll("{{rating}}", rating);
+
+			clearRoles = this._shouldClearRoles(interaction, adConfig);
 		}
 
-		return { adName, channelId, timer, title, text, content };
+		return { adName, channelId, timer, title, text, content, clearRoles };
+	},
+
+	_shouldClearRoles(interaction, adConfig) {
+		const defaults = adConfig.defaults || {};
+		const clearRoles = interaction.options.getBoolean("clear_roles");
+		if (typeof clearRoles === "boolean") {
+			return clearRoles;
+		}
+
+		if (typeof defaults.clear_roles === "boolean") {
+			return defaults.clear_roles;
+		}
+
+		return true;
 	},
 
 	async createAdMessage({ title, text, content }, adConfig) {
@@ -108,7 +126,7 @@ module.exports = {
 		};
 	},
 
-	async createAd_attendance(interaction, client, { messageProps, targetChannel, timer }) {
+	async createAd_attendance(interaction, client, { messageProps, targetChannel, timer, clearRoles }) {
 		const task = await Models.Scheduler.findOne({ name: adService.deletionTaskName });
 		if (task) {
 			await interaction.reply("Объявление будет создано после очистки предыдущего.");
@@ -118,7 +136,7 @@ module.exports = {
 		}
 
 		await adService.processRatingRolesUpdate(interaction);
-		await adService.runAdDeletionTasks(client);
+		await adService.runAdDeletionTasks(client, { withoutRolesClear: !clearRoles });
 
 		const adMessage = await targetChannel.send(messageProps);
 

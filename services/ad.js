@@ -59,9 +59,9 @@ class Ad {
 	}
 
 	// for attendance ad
-	async runAdDeletionTasks(client) {
+	async runAdDeletionTasks(client, options = {}) {
 		const tasks = await Models.Scheduler.find({ name: this.deletionTaskName });
-		const promises = tasks.map((task) => this.closeAd(task.data, client));
+		const promises = tasks.map((task) => this.closeAd(task.data, client, options));
 
 		await Promise.all([
 			...promises,
@@ -89,9 +89,11 @@ class Ad {
 	}
 
 	// for attendance ad
-	async closeAd({ guildId, messageId, channelId }, client) {
+	async closeAd({ guildId, messageId, channelId }, client, options = {}) {
 		const guild = await client.guilds.fetch(guildId);
-		await this.deleteAdRoles(guild);
+		if (!options.withoutRolesClear) {
+			await this.deleteAdRoles(guild);
+		}
 
 		if (channelId && messageId) {
 			try {
