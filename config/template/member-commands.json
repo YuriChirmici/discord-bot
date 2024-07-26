@@ -9,6 +9,7 @@
 			"channelName": "📜⌜{{user}}⌟",
 			"resultHeader": "Результаты формы:",
 			"resultChannelId": "",
+			"kickExceptionRoles": [],
 			"optionData": {
 				"text": "",
 				"emoji": "",

@@ -18,7 +18,7 @@ module.exports = {
 			interaction,
 			member: interaction.member,
 			client,
-			formName: "auth"
+			formName: formsService.formsNames.auth
 		});
 
 		await interaction.reply({ content: `Заявка создана, перейдите в ветку <#${channel.id}>`, ephemeral: true });

@@ -11,10 +11,14 @@ const {
 	generateRandomKey,
 	getModalAnswers
 } = require("./helpers");
+const adService = require("./ad");
 
 class FormsService {
 	constructor() {
 		this.NAME = "forms";
+		this.formsNames = {
+			auth: "auth"
+		};
 	}
 
 	getFormByName(name) {
@@ -449,15 +453,46 @@ class FormsService {
 
 	async clearOldForms(client) {
 		const formItems = await Models.Form.find({ completed: { $ne: true } });
+		const hasAuthForms = !!formItems.find(({ formName }) => formName === this.formsNames.auth);
+
+		let members;
+		if (hasAuthForms) {
+			const guild = await client.guilds.fetch(configService.guildId);
+			members = await adService.getGuildMembers(guild);
+		}
+
 		for (let item of formItems) {
 			const expirationDate = new Date(new Date(item.dateUpdated).getTime() + 7 * 24 * 60 * 60 * 1000);
-			if (Date.now() > expirationDate.getTime()) {
-				await this.clearOldMemberData({
-					client,
-					memberId: item.memberId,
-					formName: item.formName
-				});
+			if (Date.now() < expirationDate.getTime()) {
+				continue;
 			}
+
+			await this.clearOldMemberData({
+				client,
+				memberId: item.memberId,
+				formName: item.formName
+			});
+
+			if (item.formName === this.formsNames.auth) {
+				const member = members.find(({ user }) => user.id === item.memberId);
+				await this._kickAuthMember(member);
+			}
+		}
+	}
+
+	async _kickAuthMember(member) {
+		if (!member) {
+			return;
+		}
+
+		const formConfig = this.getFormByName(this.formsNames.auth);
+		let hasException = false;
+		if (formConfig.kickExceptionRoles?.length) {
+			hasException = !!member.roles.cache.find(r => formConfig.kickExceptionRoles.includes(r.id));
+		}
+
+		if (!hasException) {
+			await member.kick();
 		}
 	}
 

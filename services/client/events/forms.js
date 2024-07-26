@@ -5,7 +5,7 @@ const customIdService = require("../../custom-id");
 const registerEvents = (client) => {
 	client.on(Events.GuildMemberAdd, async (member) => {
 		try {
-			await formsService.startForm({ member, client, formName: "auth" });
+			await formsService.startForm({ member, client, formName: formsService.formsNames.auth });
 		} catch (err) {
 			logError(err);
 		}
@@ -13,7 +13,7 @@ const registerEvents = (client) => {
 
 	client.on(Events.GuildMemberRemove, async (member) => {
 		try {
-			await formsService.clearOldMemberData({ client, memberId: member.id, formName: "auth" });
+			await formsService.clearOldMemberData({ client, memberId: member.id, formName: formsService.formsNames.auth });
 		} catch (err) {
 			logError(err);
 		}
