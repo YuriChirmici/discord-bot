@@ -33,7 +33,6 @@ class FormsService {
 	async startForm({ interaction, member, client, formName }) {
 		const memberId = member.id;
 		const form = this.getFormByName(formName);
-		// await this.clearOldMemberData({ client, memberId, formName });
 
 		const promises = [ this.createChannel(member, form, client) ];
 		if (form.initialRoles?.length) {
@@ -47,24 +46,24 @@ class FormsService {
 		return { channel };
 	}
 
-	// async clearOldMemberData({ client, memberId, formName }) {
-	// 	try {
-	// 		const dbRecord = await Models.Form.findOneAndDelete({ memberId, formName });
-	// 		if (dbRecord?.channelId) {
-	// 			const channel = await client.channels.fetch(dbRecord?.channelId);
-	// 			if (channel) {
-	// 				await Promise.all([
-	// 					channel.delete(),
-	// 					customIdService.clearCustomId({ channelId: channel.id })
-	// 				]);
-	// 			}
-	// 		}
-	// 	} catch (err) {
-	// 		if (err.message !== "Unknown Channel") {
-	// 			logError(err);
-	// 		}
-	// 	}
-	// }
+	async clearOldMemberData({ client, memberId, formName }) {
+		try {
+			const dbRecord = await Models.Form.findOneAndDelete({ memberId, formName });
+			if (dbRecord?.channelId) {
+				const channel = await client.channels.fetch(dbRecord?.channelId);
+				if (channel) {
+					await Promise.all([
+						channel.delete(),
+						customIdService.clearCustomId({ channelId: channel.id })
+					]);
+				}
+			}
+		} catch (err) {
+			if (err.message !== "Unknown Channel") {
+				logError(err);
+			}
+		}
+	}
 
 	async createChannel(member, form) {
 		const channel = await member.guild.channels.fetch(form.parentChannelId);
