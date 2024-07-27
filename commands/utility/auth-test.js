@@ -1,6 +1,8 @@
 const { SlashCommandBuilder, PermissionFlagsBits } = require("discord.js");
 const formsService = require("../../services/forms");
+const localizationService = require("../../services/localization");
 
+const local = localizationService.getLocal();
 const NAME = getCommandName(__filename);
 
 module.exports = {
@@ -8,7 +10,7 @@ module.exports = {
 	get() {
 		return new SlashCommandBuilder()
 			.setName(NAME)
-			.setDescription("Тест авторизации")
+			.setDescription(local.authTestCommandDesc)
 			.setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
 			.setDMPermission(false);
 	},
@@ -21,6 +23,6 @@ module.exports = {
 			formName: formsService.formsNames.auth
 		});
 
-		await interaction.reply({ content: `Заявка создана, перейдите в ветку <#${channel.id}>`, ephemeral: true });
+		await interaction.reply({ content: local.authTestReply.replace("{{channelId}}", channel.id), ephemeral: true });
 	},
 };

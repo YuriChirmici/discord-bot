@@ -4,6 +4,9 @@ const configService = require("./config");
 const profileService = require("./profile");
 const { createModal, getDateFormatted, getModalAnswers, createEmbed } = require("./helpers");
 const { Models } = require("../database");
+const localizationService = require("./localization");
+
+const local = localizationService.getLocal();
 
 class MemberCommandsService {
 	constructor() {
@@ -39,7 +42,7 @@ class MemberCommandsService {
 
 		if (oldForm) {
 			await interaction.reply({
-				content: `Заявка уже создана, перейдите в ветку <#${oldForm.channelId}>`,
+				content: local.startedFormExistErr.replace("{{channelId}}", oldForm.channelId),
 				ephemeral: true
 			});
 			return;
@@ -53,7 +56,7 @@ class MemberCommandsService {
 		});
 
 		await interaction.reply({
-			content: `Заявка создана, перейдите в ветку <#${channel.id}>`,
+			content: local.formStartedReply.replace("{{channelId}}", channel.id),
 			ephemeral: true
 		});
 	}
@@ -106,7 +109,7 @@ class MemberCommandsService {
 		if (command.name === this.vacationCommandName) {
 			customResult = await this._processVacationSubmit({ interaction, answers });
 		} else {
-			await interaction.reply({ content: "Результат сохранён!", ephemeral: true });
+			await interaction.reply({ content: local.modalSubmitReply, ephemeral: true });
 		}
 
 		if (customResult?.hasError) {
@@ -122,7 +125,7 @@ class MemberCommandsService {
 		const vacationError = this._getDateValidationErr(answers.vacationStart, answers.vacationEnd);
 		if (vacationError) {
 			await interaction.reply({
-				content: "Ошибка: " + vacationError,
+				content: local.errorDetails.replace("{{details}}", vacationError),
 				ephemeral: true
 			});
 			return { hasError: true };
@@ -136,7 +139,7 @@ class MemberCommandsService {
 		});
 
 		await interaction.reply({
-			content: `Отпуск до ${getDateFormatted(endDate)} записан. Приятного отдыха!`,
+			content: local.vacationSuccessReply.replace("{{endDate}}", getDateFormatted(endDate)),
 			ephemeral: true
 		});
 	}
@@ -149,9 +152,9 @@ class MemberCommandsService {
 
 		const { startDate, endDate } = this._createVacationDates(startDateStr, endDateStr);
 		if (endDate.getTime() < startDate.getTime() + 24 * 60 * 60 * 1000) {
-			return "Дата окончания отпуска должна быть минимум на день позже его начала!";
+			return local.vacationErr1;
 		} else if (endDate.getTime() < Date.now()) {
-			return "Дата окончания отпуска не может быть раньше сегодняшнего дня!";
+			return local.vacationErr2;
 		}
 	}
 
@@ -165,11 +168,7 @@ class MemberCommandsService {
 	_getDateRequiredErr(dateStr = "", isStart) {
 		const [ day, month, year ] = this._getDateParts(dateStr);
 		if (!day || !month || !year) {
-			if (isStart) {
-				return "Неверный формат даты начала отпуска!";
-			} else {
-				return "Неверный формат даты окончания отпуска!";
-			}
+			return isStart ? local.vacationStartValidationErr : local.vacationEndValidationErr;
 		}
 	}
 
@@ -246,7 +245,7 @@ class MemberCommandsService {
 		const profile = await Models.Profile.findOne({ memberId: member.id });
 		if (!profile?.vacationEnd) {
 			await interaction.reply({
-				content: "Вы сейчас не в отпуске!",
+				content: local.endVacationErr,
 				ephemeral: true
 			});
 			return;
@@ -258,13 +257,13 @@ class MemberCommandsService {
 		]);
 
 		await interaction.reply({
-			content: "Вы вышли из отпуска!",
+			content: local.endVacationSuccess,
 			ephemeral: true
 		});
 
 		if (command.resultChannelId) {
 			const channel = await client.channels.fetch(command.resultChannelId);
-			await channel.send(`Пользователь <@${member.id}> досрочно вышел из отпуска.`);
+			await channel.send(local.endVacationResult.replace("{{memberId}}", member.id));
 		}
 	}
 }

@@ -3,7 +3,9 @@ const {
 	PermissionFlagsBits,
 } = require("discord.js");
 const configService = require("../../services/config");
+const localizationService = require("../../services/localization");
 
+const local = localizationService.getLocal();
 const NAME = getCommandName(__filename);
 
 module.exports = {
@@ -11,12 +13,12 @@ module.exports = {
 	get() {
 		return new SlashCommandBuilder()
 			.setName(NAME)
-			.setDescription("Проверка")
+			.setDescription(local.pingCommandDesc)
 			.setDefaultMemberPermissions(PermissionFlagsBits[configService.commandsPermission])
 			.setDMPermission(false);
 	},
 
 	async execute({ interaction }) {
-		await interaction.reply({ content: "Pong", ephemeral: true });
+		await interaction.reply({ content: local.pingReply, ephemeral: true });
 	}
 };

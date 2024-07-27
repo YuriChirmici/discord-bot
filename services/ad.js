@@ -4,7 +4,9 @@ const configService = require("./config");
 const { Models } = require("../database");
 const { getButtonsFlat, getDomByUrl, setRoles, getDateFormatted } = require("./helpers");
 const { AttachmentBuilder } = require("discord.js");
+const localizationService = require("./localization");
 
+const local = localizationService.getLocal();
 const srcPath = path.join(__dirname, "../src");
 const nicknamesFilePath = path.join(srcPath, "nicknames.csv");
 const ratingStatFilePath = path.join(srcPath, "rating-update-result.json");
@@ -322,7 +324,7 @@ class Ad {
 		const fileResult = await this.updateRatingRoles(interaction);
 		const channel = await interaction.guild.channels.fetch(configService.ratingRoles.resultChannelId);
 		await channel.send({
-			content: "Результат обновления рейтинговых ролей:",
+			content: local.adRatingRolesUpdateResult,
 			files: [ fileResult ]
 		});
 

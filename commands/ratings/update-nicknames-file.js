@@ -4,7 +4,9 @@ const { SlashCommandBuilder, PermissionFlagsBits } = require("discord.js");
 const configService = require("../../services/config");
 const { downloadFile } = require("../../services/helpers");
 const adService = require("../../services/ad");
+const localizationService = require("../../services/localization");
 
+const local = localizationService.getLocal();
 const NAME = getCommandName(__filename);
 const srcPath = path.join(__dirname, "../../src");
 const nicknamesPath = path.join(srcPath, "nicknames.csv");
@@ -14,14 +16,14 @@ module.exports = {
 	get() {
 		return new SlashCommandBuilder()
 			.setName(NAME)
-			.setDescription("Обновляет файл с никами")
+			.setDescription(local.updateNicknamesCommandDesc)
 			.setDefaultMemberPermissions(PermissionFlagsBits[configService.commandsPermission])
 			.setDMPermission(false)
-			.addAttachmentOption(option => option.setName("file").setDescription("CSV файл с никами").setRequired(true));
+			.addAttachmentOption(option => option.setName("file").setDescription(local.updateNicknamesFileParamDesc).setRequired(true));
 	},
 
 	async execute({ interaction }) {
-		await interaction.reply({ content: "Команда будет обработана в ближайшее время.", ephemeral: true });
+		await interaction.reply({ content: local.updateNicknamesReply, ephemeral: true });
 
 		const file = interaction.options.getAttachment("file");
 		const fileData = await downloadFile(file.url);

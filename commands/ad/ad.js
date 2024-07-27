@@ -5,7 +5,9 @@ const { Models } = require("../../database");
 const { createButtons, createSelect, getButtonsFlat, createEmbed } = require("../../services/helpers");
 const customIdService = require("../../services/custom-id");
 const memberCommandsService = require("../../services/member-commands");
+const localizationService = require("../../services/localization");
 
+const local = localizationService.getLocal();
 const NAME = getCommandName(__filename);
 
 module.exports = {
@@ -13,17 +15,17 @@ module.exports = {
 	get() {
 		return new SlashCommandBuilder()
 			.setName(NAME)
-			.setDescription(`Создает объявление. Типы: ${configService.adsConfig.ads.map(({ name }) => name).join(", ")}`)
-			.addStringOption(option => option.setName("name").setDescription("Название объявления").setRequired(true).addChoices(
+			.setDescription(local.adCommandDesc.replace("{{types}}", configService.adsConfig.ads.map(({ name }) => name).join(", ")))
+			.addStringOption(option => option.setName("name").setDescription(local.adNameParamDesc).setRequired(true).addChoices(
 				...configService.adsConfig.ads.map(({ name }) => ({ name, value: name }))
 			))
-			.addChannelOption(option => option.setName("channel").setDescription("Целевой канал"))
-			.addIntegerOption(option => option.setName("timer").setDescription("Таймер для удаления объявления (минуты)"))
-			.addStringOption(option => option.setName("title").setDescription("Заголовок эмбеда"))
-			.addStringOption(option => option.setName("text").setDescription("Текст эмбеда"))
-			.addStringOption(option => option.setName("date").setDescription("Дата"))
-			.addStringOption(option => option.setName("time").setDescription("Время"))
-			.addBooleanOption(option => option.setName("clear_roles").setDescription("Снятие ролей после удаления предыдущего объявления"))
+			.addChannelOption(option => option.setName("channel").setDescription(local.adChannelParamDesc))
+			.addIntegerOption(option => option.setName("timer").setDescription(local.adTimerParamDesc))
+			.addStringOption(option => option.setName("title").setDescription(local.adTitleParamDesc))
+			.addStringOption(option => option.setName("text").setDescription(local.adTextParamDesc))
+			.addStringOption(option => option.setName("date").setDescription(local.adDateParamDesc))
+			.addStringOption(option => option.setName("time").setDescription(local.adTimeParamDesc))
+			.addBooleanOption(option => option.setName("clear_roles").setDescription(local.adClearRolesParamDesc))
 			.setDefaultMemberPermissions(PermissionFlagsBits[configService.commandsPermission])
 			.setDMPermission(false);
 	},
@@ -33,7 +35,7 @@ module.exports = {
 		const adConfig = adService.getAdConfigByName(adName);
 		const creationFuncName = `createAd_${adConfig?.type}`;
 		if (!this[creationFuncName]) {
-			return await interaction.reply("Неверные название или тип объявления");
+			return await interaction.reply(local.adWrongTypeErr);
 		}
 
 		const { channelId, timer, title, text, content, clearRoles } = this.getCommandOptions(interaction);
@@ -114,7 +116,7 @@ module.exports = {
 	async createAd_attendance(interaction, client, { messageProps, targetChannel, timer, clearRoles }) {
 		const task = await Models.Scheduler.findOne({ name: adService.deletionTaskName });
 		if (task) {
-			await interaction.reply("Объявление будет создано после очистки предыдущего.");
+			await interaction.reply(local.adAttendanceReply);
 		} else {
 			await interaction.deferReply();
 			await interaction.deleteReply();
@@ -154,7 +156,7 @@ module.exports = {
 					value: command.name
 				})),
 				{
-					text: "Сброс выбора",
+					text: local.memberCommandsClearChoice,
 					value: memberCommandsService.clearSelectOptionValue
 				},
 			]
@@ -216,23 +218,25 @@ module.exports = {
 		let message;
 		if (rolesCleared) {
 			if (roles.length > 1) {
-				message = `Роли "${rolesString}" очищены`;
+				message = local.rolesRemoved;
 			} else {
-				message = `Роль "${rolesString}" очищена`;
+				message = local.roleRemoved;
 			}
 		} else if (adConfig.multipleRoles) {
 			if (roles.length > 1) {
-				message = `Роли "${rolesString}" добавлены`;
+				message = local.rolesAdded;
 			} else {
-				message = `Роль "${rolesString}" добавленa`;
+				message = local.roleAdded;
 			}
 		} else {
 			if (roles.length > 1) {
-				message = `Роли изменены на "${rolesString}"`;
+				message = local.rolesChanged;
 			} else {
-				message = `Роль изменена на "${rolesString}"`;
+				message = local.roleChanged;
 			}
 		}
+
+		message = message.replace("{{role}}", rolesString);
 
 		return message;
 	},

@@ -13,6 +13,9 @@ const {
 	createEmbed
 } = require("./helpers");
 const adService = require("./ad");
+const localizationService = require("./localization");
+
+const local = localizationService.getLocal();
 
 class FormsService {
 	constructor() {
@@ -349,7 +352,7 @@ class FormsService {
 		if (shouldDeleteBranch) {
 			await channel.delete();
 		} else {
-			await interaction.reply("Результат сохранён!");
+			await interaction.reply(local.formSubmitReply);
 		}
 
 		if (form.resultChannelId) {

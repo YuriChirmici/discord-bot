@@ -2,7 +2,9 @@ const {	SlashCommandBuilder, PermissionFlagsBits, ButtonStyle } = require("disco
 const adService = require("../../services/ad");
 const configService = require("../../services/config");
 const { createButtons } = require("../../services/helpers");
+const localizationService = require("../../services/localization");
 
+const local = localizationService.getLocal();
 const NAME = getCommandName(__filename);
 
 module.exports = {
@@ -10,7 +12,7 @@ module.exports = {
 	get() {
 		return new SlashCommandBuilder()
 			.setName(NAME)
-			.setDescription("Очищает статистику")
+			.setDescription(local.adStatRemoveCommandDesc)
 			.setDefaultMemberPermissions(PermissionFlagsBits[configService.commandsPermission])
 			.setDMPermission(false);
 	},
@@ -18,7 +20,7 @@ module.exports = {
 	async execute({ interaction }) {
 		const buttonsConfig = [ [ {
 			style: ButtonStyle.Danger,
-			text: "Подтвердить"
+			text: local.adStatRemoveConfirm
 		} ] ];
 		const components = await createButtons(buttonsConfig, { commandName: NAME, data: { action: "confirm" } });
 
@@ -33,7 +35,7 @@ module.exports = {
 		if (action === "confirm") {
 			await adService.clearStats();
 			await interaction.reply({
-				content: "Статистика очищена!",
+				content: local.adStatRemoveSuccess,
 				ephemeral: true
 			});
 		}

@@ -2,7 +2,9 @@ const {	SlashCommandBuilder, PermissionFlagsBits } = require("discord.js");
 const adService = require("../../services/ad");
 const configService = require("../../services/config");
 const { createEmbed } = require("../../services/helpers");
+const localizationService = require("../../services/localization");
 
+const local = localizationService.getLocal();
 const NAME = getCommandName(__filename);
 
 module.exports = {
@@ -10,9 +12,9 @@ module.exports = {
 	get() {
 		return new SlashCommandBuilder()
 			.setName(NAME)
-			.setDescription("Показывает статистику ролей, выданных через объявление")
+			.setDescription(local.adStatCommandDesc)
 			.setDefaultMemberPermissions(PermissionFlagsBits[configService.commandsPermission])
-			.addUserOption(option => option.setName("user").setDescription("Пользователь"))
+			.addUserOption(option => option.setName("user").setDescription(local.adStatUserParamDesc))
 			.setDMPermission(false);
 	},
 
@@ -33,7 +35,7 @@ module.exports = {
 		const embeds = this.divideTextToEmbeds(stat);
 
 		await interaction.reply({
-			content: "Статистика:",
+			content: local.adStatReplyContent,
 			embeds,
 			ephemeral: true
 		});
@@ -48,7 +50,7 @@ module.exports = {
 			const row = rows[i];
 			content += row + "\n";
 			if (content.length > 1750 || i === rows.length - 1) {
-				const embed = createEmbed({ description: content, title: "Часть " + part });
+				const embed = createEmbed({ description: content, title: `${local.part} ${part}` });
 				embeds.push(embed);
 				content = "";
 				part++;
