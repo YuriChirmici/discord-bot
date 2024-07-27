@@ -146,6 +146,7 @@ module.exports.getButtonsFlat = (buttonsRows) => buttonsRows.flat();
 
 const downloadFile = module.exports.downloadFile = (url) => new Promise((resolve, reject) => {
 	https.get(url, (res) => {
+		res.setEncoding("utf8");
 		let result = "";
 		res.on("data", (data) => {
 			result += data;
