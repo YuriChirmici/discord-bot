@@ -68,7 +68,7 @@ class FormsService {
 	async createChannel(member, form) {
 		const channel = await member.guild.channels.fetch(form.parentChannelId);
 		const thread = await channel.threads.create({
-			name: form.channelName.replace("{{user}}", member.user.globalName),
+			name: form.channelName.replace("{{userName}}", member.user.globalName),
 			autoArchiveDuration: ThreadAutoArchiveDuration.OneDay,
 			type: ChannelType.PrivateThread,
 		});
@@ -144,7 +144,7 @@ class FormsService {
 	}
 
 	_prepareMessageText(text = "", data = {}) {
-		return text.replace("@User", `<@${data.memberId}>`).replace("{{user}}", data.name || "");
+		return text.replace("{{userTag}}", `<@${data.memberId}>`).replace("{{userName}}", data.name || "");
 	}
 
 	_getQuestionById(questionId, formName) {
@@ -417,11 +417,14 @@ class FormsService {
 		const resultChannelId = form.resultChannelId;
 		const channel = await client.channels.fetch(resultChannelId);
 
-		const resultHeader = this._prepareMessageText(form.resultHeader, { name: nickname || member.user.globalName });
+		const resultHeader = this._prepareMessageText(form.resultHeader, {
+			name: nickname || member.user.globalName,
+			memberId: member.id
+		});
 		const resultText = this.prepareResultText({ answers: dbRecord.answers, formName, member });
 
-		const embed = createEmbed({ description: resultText, title: resultHeader });
-		await channel.send({ embeds: [ embed ] });
+		const embed = createEmbed({ description: resultText });
+		await channel.send({ embeds: [ embed ], content: resultHeader });
 	}
 
 	prepareResultText({ answers, formName, member }) {

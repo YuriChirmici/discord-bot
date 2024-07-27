@@ -98,7 +98,7 @@ class MemberCommandsService {
 
 	async sendModalResult({ interaction, client, command, resultText }) {
 		const channel = await client.channels.fetch(command.resultChannelId);
-		const content = (command.resultHeader || "").replace("@User", `<@${interaction.member.id}>`) + "\n";
+		const content = (command.resultHeader || "").replace("{{userTag}}", `<@${interaction.member.id}>`) + "\n";
 		const embed = createEmbed({	description: resultText });
 		await channel.send({ embeds: [ embed ], content });
 	}

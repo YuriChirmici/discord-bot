@@ -6,7 +6,7 @@
 			"hideInAd": true,
 			"parentChannelId": "",
 			"initialRoles": [],
-			"channelName": "📜⌜{{user}}⌟",
+			"channelName": "📜⌜{{userName}}⌟",
 			"resultHeader": "Результаты формы:",
 			"resultChannelId": "",
 			"kickExceptionRoles": [],
