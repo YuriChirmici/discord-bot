@@ -50,7 +50,6 @@ module.exports = {
 	formStartedReply: "Заявка создана успешно, перейдите в ветку <#{{channelId}}>",
 	modalSubmitReply: "Результат сохранён!",
 
-	vacationSuccessReply: "Отпуск до {{endDate}} записан. Приятного отдыха!",
 	vacationErr1: "Дата окончания отпуска должна быть минимум на день позже его начала!",
 	vacationErr2: "Дата окончания отпуска не может быть раньше сегодняшнего дня!",
 	vacationStartValidationErr: "Неверный формат даты начала отпуска!",

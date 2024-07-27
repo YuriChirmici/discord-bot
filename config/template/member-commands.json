@@ -86,6 +86,7 @@
 			"name": "vacation",
 			"resultHeader": "",
 			"resultChannelId": "",
+			"userReplyResult": "Результат сохранён!",
 			"vacationRoles": [],
 			"optionData": {
 				"text": "",

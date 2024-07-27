@@ -94,6 +94,10 @@ class MemberCommandsService {
 		if (command.resultChannelId && result?.resultText) {
 			await this.sendModalResult({ interaction, client, command, resultText: result.resultText });
 		}
+
+		if (result?.userReply) {
+			await interaction.reply({ content: result.userReply, ephemeral: true });
+		}
 	}
 
 	async sendModalResult({ interaction, client, command, resultText }) {
@@ -106,10 +110,14 @@ class MemberCommandsService {
 	async _getModalResult({ interaction, command }) {
 		const answers = getModalAnswers(command.modal, interaction.fields);
 		let customResult;
+		let userReplyResult = command.userReplyResult;
 		if (command.name === this.vacationCommandName) {
 			customResult = await this._processVacationSubmit({ interaction, answers });
-		} else {
-			await interaction.reply({ content: local.modalSubmitReply, ephemeral: true });
+			if (customResult.endDate) {
+				userReplyResult = command.userReplyResult
+					.replace("{{endDate}}", getDateFormatted(customResult.endDate))
+					.replace("{{startDate}}", getDateFormatted(customResult.startDate));
+			}
 		}
 
 		if (customResult?.hasError) {
@@ -117,8 +125,9 @@ class MemberCommandsService {
 		}
 
 		const resultText = this.prepareModalResult(command, answers);
+		const userReply = userReplyResult || local.modalSubmitReply;
 
-		return { resultText };
+		return { resultText, userReply };
 	}
 
 	async _processVacationSubmit({ interaction, answers }) {
@@ -138,10 +147,7 @@ class MemberCommandsService {
 			vacationEnd: endDate,
 		});
 
-		await interaction.reply({
-			content: local.vacationSuccessReply.replace("{{endDate}}", getDateFormatted(endDate)),
-			ephemeral: true
-		});
+		return { startDate, endDate };
 	}
 
 	_getDateValidationErr(startDateStr, endDateStr) {
