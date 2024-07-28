@@ -113,7 +113,7 @@ class MemberCommandsService {
 		let userReplyResult = command.userReplyResult;
 		if (command.name === this.vacationCommandName) {
 			customResult = await this._processVacationSubmit({ interaction, answers });
-			if (customResult.endDate) {
+			if (customResult.endDate && command.userReplyResult) {
 				userReplyResult = command.userReplyResult
 					.replace("{{endDate}}", getDateFormatted(customResult.endDate))
 					.replace("{{startDate}}", getDateFormatted(customResult.startDate));
