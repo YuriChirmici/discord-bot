@@ -39,7 +39,8 @@
 								"rolesAdd": [ "" ], 
 								"rolesRemove": [ "" ], 
 								"isSubmit": true,
-								"preserveBranch": true
+								"preserveBranch": true,
+								"hideInResult": true
 							}
 						]
 					],
@@ -57,7 +58,8 @@
 								"rolesAdd": [ "" ], 
 								"rolesRemove": [ "" ],
 								"resultText": "",
-								"preserveBranch": true
+								"preserveBranch": true,
+								"hideInResult": true
 							}
 						]
 					},

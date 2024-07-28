@@ -457,17 +457,26 @@ class FormsService {
 			let questionDataText = `Q: ${question.resultText || question.text || ""}:\nA: `;
 			if (buttonIndex || buttonIndex === 0) {
 				const button = getButtonsFlat(question.buttons)[buttonIndex];
+				if (button.hideInResult) {
+					return;
+				}
 				questionDataText += `${button.emoji || ""} ${button.resultText || button.text || ""}`.trim();
 			} else if (textAnswers?.length === 1) {
 				questionDataText += textAnswers[0].text;
 			} else if (selectValues?.length) {
 				const optionsTexts = [];
 				question.select.options.forEach((option) => {
+					if (option.hideInResult) {
+						return;
+					}
 					const userValue = selectValues.find((value) => value === option.text);
 					if (userValue) {
 						optionsTexts.push(option.resultText || option.text || "");
 					}
 				});
+				if (!optionsTexts.length) {
+					return;
+				}
 				questionDataText += optionsTexts.join(", ");
 			}
 
