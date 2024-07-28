@@ -347,15 +347,14 @@ class FormsService {
 			}
 		}
 
+		if (form.resultChannelId) {
+			await this.sendResult({ dbRecord, client, member, nickname, formName });
+		}
+
+		await interaction.reply(local.formSubmitReply);
 		const shouldDeleteBranch = !this._checkShouldPreserveBranch(dbRecord.answers, formName);
 		if (shouldDeleteBranch) {
 			await channel.delete();
-		} else {
-			await interaction.reply(local.formSubmitReply);
-		}
-
-		if (form.resultChannelId) {
-			await this.sendResult({ dbRecord, client, member, nickname, formName });
 		}
 	}
 
