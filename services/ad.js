@@ -300,7 +300,7 @@ class Ad {
 
 		for (let i = 1; i < rows.length; i++) {
 			const parts = rows[i].split(",");
-			const isMainReg = parts[7].trim() === "A";
+			const isMainReg = (parts[7] || "").trim() === "A";
 			if (!isMainReg) {
 				continue;
 			}
