@@ -68,7 +68,7 @@ class FormsService {
 	async createChannel(member, form) {
 		const channel = await member.guild.channels.fetch(form.parentChannelId);
 		const thread = await channel.threads.create({
-			name: form.channelName.replace("{{userName}}", member.user.globalName),
+			name: form.channelName.replace("{{userName}}", member.user.globalName || member.user.username),
 			autoArchiveDuration: ThreadAutoArchiveDuration.OneDay,
 			type: ChannelType.PrivateThread,
 		});
