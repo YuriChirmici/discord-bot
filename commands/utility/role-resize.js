@@ -17,18 +17,26 @@ module.exports = {
 			.setDescription(local.roleResizeCommand)
 			.setDefaultMemberPermissions(PermissionFlagsBits[configService.commandsPermission])
 			.addRoleOption(option => option.setName("role").setDescription(local.roleResizeParamRole).setRequired(true))
-			.addNumberOption(option => option.setName("size").setDescription(local.roleResizeParamSize).setRequired(true))
+			.addNumberOption(option => option.setName("size").setDescription(local.roleResizeParamSize))
 			.setDMPermission(false);
 	},
 
 	async execute({ interaction }) {
 		const role = interaction.options.getRole("role");
-		const size = interaction.options.getNumber("size");
+		const size = interaction.options.getNumber("size") || 200;
 
 		const oldName = role.name.replaceAll(textResizingService.invisibleLastSymbol, "").trim();
 		const newName = textResizingService.resizeText(oldName, size);
+		const newSize = Math.round(textResizingService.getTextWidth(newName) - 9); // extract last symbol difference for font issue
+		const oldSize = Math.round(textResizingService.getTextWidth(oldName));
 
 		await role.edit({ name: newName });
-		await interaction.reply({ content: `Название роли успешно изменено на "${newName}"`, ephemeral: true });
+		const resultText = local.roleResizeResult
+			.replace("{{newName}}", newName)
+			.replace("{{newSize}}", newSize)
+			.replace("{{oldName}}", oldName)
+			.replace("{{oldSize}}", oldSize);
+
+		await interaction.reply({ content: resultText, ephemeral: true });
 	}
 };

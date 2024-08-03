@@ -61,4 +61,5 @@ module.exports = {
 	roleResizeCommand: "Изменяет длину роли на указанную длину, добавляя невидимые символы",
 	roleResizeParamRole: "Роль",
 	roleResizeParamSize: "Целевой размер (в пикселях)",
+	roleResizeResult: "Название роли успешно изменено на \"{{newName}}\" ({{newSize}}px)\nСтарое очищенное название: \"{{oldName}}\" ({{oldSize}}px)",
 };
