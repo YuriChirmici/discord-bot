@@ -57,4 +57,8 @@ module.exports = {
 	endVacationErr: "Вы сейчас не в отпуске!",
 	endVacationSuccess: "Вы вышли из отпуска!",
 	endVacationResult: "Пользователь <@{{memberId}}> досрочно вышел из отпуска.",
+
+	roleResizeCommand: "Изменяет длину роли на указанную длину, добавляя невидимые символы",
+	roleResizeParamRole: "Роль",
+	roleResizeParamSize: "Целевой размер (в пикселях)",
 };
