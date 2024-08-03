@@ -8,6 +8,9 @@ class TextResizingService {
 		this.invisibleLastSymbol = "ㅤ";
 		this.customFontName = "gg sans";
 		this._initContext();
+
+		console.log("Invisible symbol size:", this.getTextWidth(" "));
+		console.log("Last invisible symbol size:", this.getTextWidth(this.invisibleLastSymbol));
 	}
 
 	_initContext() {
