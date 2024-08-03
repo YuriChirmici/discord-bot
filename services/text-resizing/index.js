@@ -5,12 +5,18 @@ class TextResizingService {
 		// eslint-disable-next-line no-unused-vars
 		const invisibleSymbols = "       ㅤ";
 
-		this.invisibleLastSymbol = "ㅤ";
 		this.customFontName = "gg sans";
 		this._initContext();
 
-		console.log("Invisible symbol size:", this.getTextWidth(" "));
-		console.log("Last invisible symbol size:", this.getTextWidth(this.invisibleLastSymbol));
+		this.maxSize = 200;
+		this.emojiSize = this.context.measureText("🏅").width;
+		this.actualEmojiSize = 16.4765625;
+		this.lastInvisibleSymbol = "ㅤ";
+		this.lastSymbolSize = this.getTextWidth(this.lastInvisibleSymbol);
+		this.lastSymbolActualSize = 12;
+		this.discordInvisibleSymbolSize = 2;
+		this.invisibleSymbol = " ";
+		this.invisibleSymbolSize = this.getTextWidth(this.invisibleSymbol);
 	}
 
 	_initContext() {
@@ -22,35 +28,46 @@ class TextResizingService {
 		this.context = context;
 	};
 
-	_getInvisibleRow(size) {
-		const invisibleSymbol = " ";
-		const invisibleSymbolSize = this.getTextWidth(invisibleSymbol);
-		let resultText = "";
-		while (this.getTextWidth(resultText += invisibleSymbol) < size) {}
-
-		const resultTextSize = this.getTextWidth(resultText);
-		if ((resultTextSize - invisibleSymbolSize / 2) > size) {
-			resultText = resultText.substring(0, resultText.length - 1);
-		}
+	_getInvisibleRow(size, isMaxSize) {
+		const symbolsNumberRaw = size / this.invisibleSymbolSize;
+		const symbolsNumber = isMaxSize ? Math.trunc(symbolsNumberRaw) : Math.round(symbolsNumberRaw);
+		const resultText = this.invisibleSymbol.repeat(symbolsNumber);
 
 		return resultText;
 	};
 
 	getTextWidth(text) {
-		return this.context.measureText(text).width;
+		const emojisNumber = this._getEmojisCount(text);
+		return this.context.measureText(text).width - emojisNumber * (this.emojiSize - this.actualEmojiSize);
+	}
+
+	_getEmojisCount(text) {
+		const emojiRegex = /[\p{Emoji_Presentation}\p{Emoji}\p{Extended_Pictographic}]/gu;
+		const matches = text.match(emojiRegex);
+		const digits = this._countDigits(text);
+
+		const count = (matches?.length || 0) - digits;
+
+		return count < 0 ? 0 : count;
+	}
+
+	_countDigits(text) {
+		const digitRegex = /\d/g;
+		const matches = text.match(digitRegex);
+		return matches?.length || 0;
 	}
 
 	resizeText(text, targetSize) {
-		const lastSymbolActualSize = 12;
 		const textSize = this.getTextWidth(text);
 
-		const invisibleRowSize = targetSize - textSize - lastSymbolActualSize;
+		const invisibleRowSize = targetSize - textSize - this.lastSymbolActualSize;
 		if (invisibleRowSize <= 0) {
 			return text;
 		}
 
-		const invisibleRow = this._getInvisibleRow(invisibleRowSize);
-		const resultText = text + invisibleRow + this.invisibleLastSymbol;
+		const isMaxSize = targetSize === this.maxSize;
+		const invisibleRow = this._getInvisibleRow(invisibleRowSize, isMaxSize);
+		const resultText = text + invisibleRow + this.lastInvisibleSymbol;
 
 		return resultText;
 	};

@@ -23,12 +23,14 @@ module.exports = {
 
 	async execute({ interaction }) {
 		const role = interaction.options.getRole("role");
-		const size = interaction.options.getNumber("size") || 200;
+		const size = interaction.options.getNumber("size") || textResizingService.maxSize;
 
-		const oldName = role.name.replaceAll(textResizingService.invisibleLastSymbol, "").trim();
+		const oldName = role.name.replaceAll(textResizingService.lastInvisibleSymbol, "").trim();
 		const newName = textResizingService.resizeText(oldName, size);
-		const newSize = Math.round(textResizingService.getTextWidth(newName) - 9); // extract last symbol difference for font issue
-		const oldSize = Math.round(textResizingService.getTextWidth(oldName));
+		const newSize =	textResizingService.getTextWidth(newName) - textResizingService.lastSymbolSize +
+			textResizingService.lastSymbolActualSize; // extract last symbol difference for font issue
+
+		const oldSize = textResizingService.getTextWidth(oldName);
 
 		await role.edit({ name: newName });
 		const resultText = local.roleResizeResult
