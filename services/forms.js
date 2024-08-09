@@ -50,12 +50,10 @@ class FormsService {
 		try {
 			const dbRecord = await Models.Form.findOneAndDelete({ memberId, formName });
 			if (dbRecord?.channelId) {
-				const channel = await client.channels.fetch(dbRecord?.channelId);
+				await customIdService.clearCustomId({ channelId: dbRecord.channelId });
+				const channel = await client.channels.fetch(dbRecord.channelId);
 				if (channel) {
-					await Promise.all([
-						channel.delete(),
-						customIdService.clearCustomId({ channelId: channel.id })
-					]);
+					await channel.delete();
 				}
 			}
 		} catch (err) {
