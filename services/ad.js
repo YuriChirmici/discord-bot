@@ -3,13 +3,11 @@ const path = require("path");
 const configService = require("./config");
 const { Models } = require("../database");
 const { getButtonsFlat, getDomByUrl, setRoles, getDateFormatted } = require("./helpers");
-const { AttachmentBuilder } = require("discord.js");
 const localizationService = require("./localization");
 
 const local = localizationService.getLocal();
 const srcPath = path.join(__dirname, "../src");
 const nicknamesFilePath = path.join(srcPath, "nicknames.csv");
-const ratingStatFilePath = path.join(srcPath, "rating-update-result.json");
 
 class Ad {
 	constructor() {
@@ -321,14 +319,9 @@ class Ad {
 	}
 
 	async processRatingRolesUpdate(interaction) {
-		const fileResult = await this.updateRatingRoles(interaction);
+		const resultText = await this.updateRatingRoles(interaction);
 		const channel = await interaction.guild.channels.fetch(configService.ratingRoles.resultChannelId);
-		await channel.send({
-			content: local.adRatingRolesUpdateResult,
-			files: [ fileResult ]
-		});
-
-		await adService.deleteRatingUpdateStatFile();
+		await channel.send(`${local.adRatingRolesUpdateResult}:\n${resultText}`);
 	}
 
 	async updateRatingRoles(interaction) {
@@ -339,15 +332,13 @@ class Ad {
 		]);
 
 		if (!stats || !nicknames) {
-			return await this._prepareStatFile({ updated: false, statSiteError: !stats, fileError: !nicknames });
+			return JSON.stringify({ updated: false, statSiteError: !stats, fileError: !nicknames }, null, 4);
 		}
 
 		const { missingInDiscord, missingInFile, membersStats } = this.prepareMemberStats(stats, nicknames, members);
 		await this._updateRatingRoles(membersStats);
 
-		const fileResult = await this._prepareStatFile({ updated: true, missingInFile, missingInDiscord });
-
-		return fileResult;
+		return JSON.stringify({ updated: true, missingInFile, missingInDiscord }, null, 4);
 	}
 
 	prepareMemberStats(stats, nicknames, members) {
@@ -403,16 +394,6 @@ class Ad {
 		}
 
 		return roles;
-	}
-
-	async _prepareStatFile(result) {
-		await fs.promises.writeFile(ratingStatFilePath, JSON.stringify(result, null, "\t  "));
-		const file = new AttachmentBuilder(ratingStatFilePath);
-		return file;
-	}
-
-	async deleteRatingUpdateStatFile() {
-		await fs.promises.unlink(ratingStatFilePath);
 	}
 }
 
