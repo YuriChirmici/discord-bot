@@ -3,9 +3,6 @@ const emojiRegex = require("emoji-regex");
 
 class TextResizingService {
 	constructor() {
-		// eslint-disable-next-line no-unused-vars
-		const invisibleSymbols = "       ㅤ";
-
 		this.customFontName = "gg sans";
 		this._initContext();
 
@@ -16,6 +13,11 @@ class TextResizingService {
 		this.lastSymbolActualSize = 12;
 		this.invisibleSymbol = " ";
 		this.invisibleSymbolSize = this.getTextWidth(this.invisibleSymbol);
+		this.textAlign = {
+			left: "left",
+			center: "center",
+			right: "right"
+		};
 	}
 
 	_initContext() {
@@ -27,24 +29,11 @@ class TextResizingService {
 		this.context = context;
 	};
 
-	_getInvisibleRow(size, isMaxSize) {
-		const symbolsNumberRaw = size / this.invisibleSymbolSize;
-		const symbolsNumber = isMaxSize ? Math.trunc(symbolsNumberRaw) : Math.round(symbolsNumberRaw);
-		const resultText = this.invisibleSymbol.repeat(symbolsNumber);
-
-		return resultText;
-	};
-
 	getTextWidth(text) {
 		const emojisCount = this._getEmojisCount(text);
 		const clearText = this._replaceEmojis(text);
 		const textSize = this.context.measureText(clearText).width + emojisCount * this.actualEmojiSize;
 		return textSize;
-	}
-
-	getTextWidthPretty(text) {
-		const width = this.context.measureText(text).width;
-		return Math.round(width * 100) / 100;
 	}
 
 	_getEmojisCount(text) {
@@ -58,19 +47,34 @@ class TextResizingService {
 		return text.replace(regex, replaceWith);
 	}
 
-	resizeText(text, targetSize) {
+	resizeText(text, targetSize, textAlign) {
 		const textSize = this.getTextWidth(text);
-		const invisibleRowSize = targetSize - textSize - this.lastSymbolActualSize;
+		const lastSymbolsNeedCount = textAlign === this.textAlign.center ? 2 : 1;
+		const invisibleRowSize = targetSize - textSize - lastSymbolsNeedCount * this.lastSymbolActualSize;
 		if (invisibleRowSize <= 0) {
 			return text;
 		}
 
-		const isMaxSize = targetSize === this.maxSize;
-		const invisibleRow = this._getInvisibleRow(invisibleRowSize, isMaxSize);
-		const resultText = text + invisibleRow + this.lastInvisibleSymbol;
+		const invisibleSymbolsCount = Math.trunc(invisibleRowSize / this.invisibleSymbolSize);
+		const resultText = this.resizeTextByAlign(text, invisibleSymbolsCount, textAlign);
 
 		return resultText;
-	};
+	}
+
+	resizeTextByAlign(text, invisibleSymbolsCount, textAlign) {
+		if (textAlign === this.textAlign.left) {
+			return text + this.invisibleSymbol.repeat(invisibleSymbolsCount) + this.lastInvisibleSymbol;
+		} else if (textAlign === this.textAlign.right) {
+			return this.lastInvisibleSymbol + this.invisibleSymbol.repeat(invisibleSymbolsCount) + text;
+		} else if (textAlign === this.textAlign.center) {
+			const isEven = invisibleSymbolsCount % 2 === 0;
+			const rightPart = this.invisibleSymbol.repeat(Math.trunc(invisibleSymbolsCount / 2));
+			const leftPart = rightPart + (isEven ? "" : this.invisibleSymbol);
+			return this.lastInvisibleSymbol + leftPart + text + rightPart + this.lastInvisibleSymbol;
+		} else {
+			return text;
+		}
+	}
 }
 
 module.exports = new TextResizingService();

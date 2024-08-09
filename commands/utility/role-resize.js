@@ -17,6 +17,11 @@ module.exports = {
 			.setDescription(local.roleResizeCommand)
 			.setDefaultMemberPermissions(PermissionFlagsBits[configService.commandsPermission])
 			.addRoleOption(option => option.setName("role").setDescription(local.roleResizeParamRole).setRequired(true))
+			.addStringOption(option => option.setName("text-align").setDescription(local.roleResizeParamAlignDesc).setRequired(true).addChoices(
+				{ name: local.roleResizeParamAlignLeft, value: textResizingService.textAlign.left },
+				{ name: local.roleResizeParamAlignCenter, value: textResizingService.textAlign.center },
+				{ name: local.roleResizeParamAlignRight, value: textResizingService.textAlign.right },
+			))
 			.addNumberOption(option => option.setName("size").setDescription(local.roleResizeParamSize))
 			.setDMPermission(false);
 	},
@@ -24,20 +29,15 @@ module.exports = {
 	async execute({ interaction }) {
 		const role = interaction.options.getRole("role");
 		const size = interaction.options.getNumber("size") || textResizingService.maxSize;
+		const textAlign = interaction.options.getString("text-align");
 
 		const oldName = role.name.replaceAll(textResizingService.lastInvisibleSymbol, "").trim();
-		const newName = textResizingService.resizeText(oldName, size);
-		const newSize =	textResizingService.getTextWidthPretty(newName) - textResizingService.lastSymbolSize +
-			textResizingService.lastSymbolActualSize; // extract last symbol difference for font issue
-
-		const oldSize = textResizingService.getTextWidthPretty(oldName);
+		const newName = textResizingService.resizeText(oldName, size, textAlign);
 
 		await role.edit({ name: newName });
 		const resultText = local.roleResizeResult
 			.replace("{{newName}}", newName)
-			.replace("{{newSize}}", newSize)
-			.replace("{{oldName}}", oldName)
-			.replace("{{oldSize}}", oldSize);
+			.replace("{{oldName}}", oldName);
 
 		await interaction.reply({ content: resultText, ephemeral: true });
 	}
