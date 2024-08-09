@@ -3,3 +3,4 @@
 config/*
 !config/template
 .vscode/*
+package-lock.json
