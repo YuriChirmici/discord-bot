@@ -27,10 +27,10 @@ module.exports = {
 
 		const oldName = role.name.replaceAll(textResizingService.lastInvisibleSymbol, "").trim();
 		const newName = textResizingService.resizeText(oldName, size);
-		const newSize =	textResizingService.getTextWidth(newName) - textResizingService.lastSymbolSize +
+		const newSize =	textResizingService.getTextWidthPretty(newName) - textResizingService.lastSymbolSize +
 			textResizingService.lastSymbolActualSize; // extract last symbol difference for font issue
 
-		const oldSize = textResizingService.getTextWidth(oldName);
+		const oldSize = textResizingService.getTextWidthPretty(oldName);
 
 		await role.edit({ name: newName });
 		const resultText = local.roleResizeResult
