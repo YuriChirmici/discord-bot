@@ -294,12 +294,12 @@ class Ad {
 		}
 
 		const rows = nicknamesCSV.split("\n");
-		const nicknamesData = [];
+		const nicknamesObj = {};
 
 		for (let i = 1; i < rows.length; i++) {
 			const parts = rows[i].split(",");
-			const isMainReg = (parts[7] || "").trim() === "A";
-			if (!isMainReg) {
+			const regType = (parts[7] || "").trim();
+			if (![ "A", "А" ].includes(regType)) {
 				continue;
 			}
 
@@ -309,13 +309,14 @@ class Ad {
 				continue;
 			}
 
-			nicknamesData.push({
-				name: name[0] === "@" ? name.substring(1) : name,
-				nicks
-			});
+			const namePrepared = name[0] === "@" ? name.substring(1) : name;
+			nicknamesObj[namePrepared] ||= [];
+			nicknamesObj[namePrepared].push(...nicks);
 		}
 
-		return nicknamesData;
+		const nicknamesArray = Object.keys(nicknamesObj).map((name) => ({ name, nicks: nicknamesObj[name] }));
+
+		return nicknamesArray;
 	}
 
 	async processRatingRolesUpdate(interaction) {
