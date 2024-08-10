@@ -53,7 +53,7 @@ module.exports = [
 			"spaced-comment": "error",
 			"yoda": "error",
 			"eol-last": [ "error", "always" ],
-			"no-empty": 0
+			"no-empty": [ "error", { "allowEmptyCatch": true } ]
 		}
 	},
 	pluginJs.configs.recommended
