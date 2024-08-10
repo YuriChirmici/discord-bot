@@ -118,7 +118,7 @@ module.exports = {
 		if (task) {
 			await interaction.reply(local.adAttendanceReply);
 		} else {
-			await interaction.deferReply();
+			await interaction.deferReply({ ephemeral: true });
 			await interaction.deleteReply();
 		}
 
@@ -135,13 +135,13 @@ module.exports = {
 	},
 
 	async createAd_rolesUsual(interaction, client, { messageProps, targetChannel }) {
-		await interaction.deferReply();
+		await interaction.deferReply({ ephemeral: true });
 		await interaction.deleteReply();
 		await targetChannel.send(messageProps);
 	},
 
 	async createAd_memberCommands(interaction, client, { messageProps, targetChannel }) {
-		await interaction.deferReply();
+		await interaction.deferReply({ ephemeral: true });
 		await interaction.deleteReply();
 		await targetChannel.send(messageProps);
 	},
@@ -256,7 +256,7 @@ module.exports = {
 	async onCommandSelect({ interaction, client }) {
 		const memberCommand = interaction.values?.[0];
 		if (memberCommand === memberCommandsService.clearSelectOptionValue) {
-			await interaction.deferReply();
+			await interaction.deferReply({ ephemeral: true });
 			await interaction.deleteReply();
 			return;
 		}
