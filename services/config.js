@@ -8,6 +8,7 @@ class ConfigService {
 			...main,
 			...ads,
 			...memberCommands,
+			isDev: process.env.__DEV__ === "true"
 		});
 	}
 }
