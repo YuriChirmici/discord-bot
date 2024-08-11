@@ -37,7 +37,9 @@ const leaveChannel = async ({ state }) => {
 	if (state.channel.members.size === 0) {
 		try {
 			await state.channel.delete();
-		} catch (err) {}
+		} catch (err) {
+			console.log(err);
+		}
 	}
 };
 

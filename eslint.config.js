@@ -1,12 +1,44 @@
 const globals = require("globals");
 const pluginJs = require("@eslint/js");
+const reactPlugin = require("eslint-plugin-react");
+
+const clientPath = "site/client";
 
 module.exports = [
+	{
+		ignores: [ "node_modules/*", "src/*", "site/client/.next/*" ],
+	},
 	{
 		files: [ "**/*.js" ],
 		languageOptions: {
 			sourceType: "commonjs"
-		}
+		},
+	},
+	{
+		files: [ clientPath + "/**/*.jsx", clientPath + "/**/*.js" ],
+		languageOptions: {
+			sourceType: "module",
+			ecmaVersion: 2024,
+			parserOptions: {
+				ecmaFeatures: {
+					jsx: true
+				}
+			}
+		},
+		rules: {
+			...reactPlugin.configs.recommended.rules,
+			"no-unused-vars": "error",
+			"react/react-in-jsx-scope": "off",
+			"react/prop-types": "off",
+		},
+		plugins: {
+			react: reactPlugin,
+		},
+		settings: {
+			react: {
+				version: "detect"
+			}
+		},
 	},
 	{
 		languageOptions: {

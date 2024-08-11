@@ -6,6 +6,7 @@
 	"database": {
 		"connectionLink": ""
 	},
+    "ngrokToken": "",
     "clanName": "",
     "commandsPermission": "ManageRoles",
     "voiceConnections": [
@@ -15,5 +16,6 @@
             "channelName": ""
         }
     ],
-    "errorsChannelId": ""
+    "errorsChannelId": "",
+    "logsChannelId": ""
 }

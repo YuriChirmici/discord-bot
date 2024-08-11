@@ -103,7 +103,9 @@ class FormsService {
 			try {
 				await interaction.deferReply();
 				await interaction.deleteReply();
-			} catch (err) {}
+			} catch (err) {
+				console.log(err);
+			}
 		}
 
 		const messageOptions = { memberId: dbRecord.memberId };
