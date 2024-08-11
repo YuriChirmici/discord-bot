@@ -12,7 +12,7 @@ global.logError = async (err) => {
 		const channel = await client.channels.fetch(configService.errorsChannelId);
 		const message = err.stack || err.message || err;
 		if (message) {
-			await channel.send(message);
+			await channel.send(message.toString().substring(0, 1990));
 		}
 	} catch (err) {
 		console.log(err);
