@@ -35,8 +35,11 @@ const copyDocument = async (attachment) => {
 const notifyEdited = async (client, oldState, newState) => {
 	const messageUrl = `https://discord.com/channels/${configService.guildId}/${oldState.channelId}/${newState.id}`;
 	let message = `Редактирование (<@${newState.author.id}> в ${messageUrl})\n`;
-	if (oldState.content !== newState.content) {
+
+	let hasTextLogs = false;
+	if ((oldState.content || "").trim() && oldState.content !== newState.content) {
 		// text editing
+		hasTextLogs = true;
 		message += `${oldState.content}\n↓\n${newState.content}`;
 	}
 
@@ -48,6 +51,10 @@ const notifyEdited = async (client, oldState, newState) => {
 		message += "Файл(ы) удален(ы):";
 		const deletedFiles = oldFiles.filter((oldFile) => !newFiles.find((newFile) => newFile.id === oldFile.id));
 		attachments = await createDeletedAttachments(deletedFiles);
+	}
+
+	if (!hasTextLogs && !attachments.length) {
+		return;
 	}
 
 	await sendLog(client, message, attachments);
