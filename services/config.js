@@ -8,13 +8,23 @@ class ConfigService {
 	}
 
 	init() {
-		Object.assign(this, {
+		this._config = {
 			...main,
 			...ads,
 			...memberCommands,
 			isDev: process.env.__DEV__ === "true",
 			sitePort: 3000,
-		});
+		};
+
+		Object.assign(this, this._config);
+	}
+
+	getPublicConfig() {
+		const config = JSON.parse(JSON.stringify(this._config));
+		delete config.token;
+		delete config.database;
+
+		return config;
 	}
 }
 

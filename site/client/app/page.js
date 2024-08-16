@@ -1,5 +1,7 @@
-export default function Home() {
+export default function App() {
 	return (
-		<h1>Home page</h1>
+		<div>
+
+		</div>
 	);
-}
+};
