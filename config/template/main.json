@@ -15,5 +15,10 @@
             "channelName": ""
         }
     ],
-    "errorsChannelId": ""
+    "errorsChannelId": "",
+    "deletedMessagesLogging": {
+        "channelId": "",
+        "channelExceptions": [],
+        "rolesExceptions": []
+    }
 }

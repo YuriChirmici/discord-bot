@@ -15,7 +15,8 @@
     "discord.js": "^14.14.1",
     "emoji-regex": "^10.3.0",
     "jsdom": "^24.1.0",
-    "mongoose": "^8.1.0"
+    "mongoose": "^8.1.0",
+    "node-fetch": "2.7.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.1.1",
