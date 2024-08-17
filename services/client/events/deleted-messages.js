@@ -1,4 +1,4 @@
-const { Events, AttachmentBuilder } = require("discord.js");
+const { Events, AttachmentBuilder, AuditLogEvent } = require("discord.js");
 const configService = require("../../config");
 const fetch = require("node-fetch");
 
@@ -61,9 +61,13 @@ const notifyEdited = async (client, oldState, newState) => {
 };
 
 const notifyDeleted = async (client, oldState) => {
+	const auditLog = await getAuditLog(oldState.guild, oldState.author.id);
+
 	const dateCreated = new Date(oldState.createdTimestamp).toLocaleString("ru-RU", { timeZoneName: "short" });
-	let message = `Удаление (<@${oldState.author.id}> в <#${oldState.channelId}>)\n` +
-		`Дата создания: ${dateCreated}\n`;
+	let message = `Удаление (<#${oldState.channelId}>)\n` +
+		(auditLog ? `Удалил: <@${auditLog.executor.id}>\n` : "") +
+		`Автор сообщения: <@${oldState.author.id}>\n` +
+		`Дата создания сообщения: ${dateCreated}\n`;
 
 	if (oldState.content) {
 		message += `Сообщение: ${oldState.content}`;
@@ -78,6 +82,19 @@ const notifyDeleted = async (client, oldState) => {
 	}
 
 	await sendLog(client, message, attachments);
+};
+
+const getAuditLog = async (guild, targetId) => {
+	const fetchedLogs = await guild.fetchAuditLogs({
+		limit: 5,
+		type: AuditLogEvent.MessageDelete,
+	});
+
+	const logs = Array.from(fetchedLogs.entries.values());
+	const logsStartDate = Date.now() - 8000;
+	const auditLog = logs.find((log) => log.targetId === targetId && log.createdTimestamp > logsStartDate);
+
+	return auditLog;
 };
 
 const sendLog = async (client, content, files) => {
@@ -103,6 +120,8 @@ const registerEvents = (client) => {
 
 	client.on(Events.MessageDelete, async (oldState) => {
 		try {
+			// wait in case the audit log has not been created yet
+			await new Promise((resolve) => setTimeout(resolve, 2000));
 			const memberId = oldState.author.id;
 			const channelId = oldState.channelId;
 			const shouldNotify = await checkShouldNotify({ client, memberId, channelId });
