@@ -53,7 +53,7 @@ const notifyEdited = async (client, oldState, newState) => {
 		attachments = await createDeletedAttachments(deletedFiles);
 	}
 
-	if (!hasTextLogs && !attachments.length) {
+	if (!hasTextLogs && !attachments?.length) {
 		return;
 	}
 
