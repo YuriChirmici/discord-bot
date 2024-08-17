@@ -3,9 +3,7 @@ const path = require("path");
 const configService = require("./config");
 const { Models } = require("../database");
 const { getButtonsFlat, getDomByUrl, setRoles, getDateFormatted } = require("./helpers");
-const localizationService = require("./localization");
 
-const local = localizationService.getLocal();
 const srcPath = path.join(__dirname, "../src");
 const nicknamesFilePath = path.join(srcPath, "nicknames.csv");
 
@@ -322,7 +320,7 @@ class Ad {
 	async processRatingRolesUpdate(interaction) {
 		const resultText = await this.updateRatingRoles(interaction);
 		const channel = await interaction.guild.channels.fetch(configService.ratingRoles.resultChannelId);
-		await channel.send(`${local.adRatingRolesUpdateResult}:\n${resultText}`);
+		await channel.send(resultText);
 	}
 
 	async updateRatingRoles(interaction) {
@@ -333,13 +331,45 @@ class Ad {
 		]);
 
 		if (!stats || !nicknames) {
-			return JSON.stringify({ updated: false, statSiteError: !stats, fileError: !nicknames }, null, 4);
+			return this.prepareRolesUpdateErrorText({ statSiteError: !stats, fileError: !nicknames });
 		}
 
 		const { missingInDiscord, missingInFile, membersStats } = this.prepareMemberStats(stats, nicknames, members);
 		await this._updateRatingRoles(membersStats);
 
-		return JSON.stringify({ updated: true, missingInFile, missingInDiscord }, null, 4);
+		return this.prepareRolesUpdateText({ missingInFile, missingInDiscord });
+	}
+
+	prepareRolesUpdateErrorText({ statSiteError, fileError }) {
+		let message = "Ошибка обновления рейтинговых ролей. Причина:\n";
+		if (statSiteError) {
+			message += "Ошибка сайта\n";
+		}
+
+		if (fileError) {
+			message += "Ошибка файла\n";
+		}
+
+		return message.trim();
+	}
+
+	prepareRolesUpdateText({ missingInFile = [], missingInDiscord = [] }) {
+		let message = "Успешно обновлено.\n\n";
+		if (missingInFile.length) {
+			const names = missingInFile.map((nickname) => this.getDiscordFriendlyName(nickname));
+			message += "**Не найдено в файле:**\n" + names.join("\n") + "\n\n";
+		}
+
+		if (missingInDiscord.length) {
+			const names = missingInDiscord.map((nickname) => this.getDiscordFriendlyName(nickname));
+			message += "**Не найдено в Дискорде:**\n" + names.join("\n");
+		}
+
+		return message.trim();
+	}
+
+	getDiscordFriendlyName(name) {
+		return name.replaceAll("_", "\\_");
 	}
 
 	prepareMemberStats(stats, nicknames, members) {

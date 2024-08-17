@@ -37,7 +37,6 @@ module.exports = {
 
 	updateRatingCommandDesc: "Обновлять рейтинговые роли",
 	updateRatingReply: "Команда будет обработана в ближайшее время.",
-	adRatingRolesUpdateResult: "Результат обновления рейтинговых ролей",
 
 	authTestCommandDesc: "Тест авторизации",
 	authTestReply: "Заявка создана, перейдите в ветку <#{{channelId}}>",
