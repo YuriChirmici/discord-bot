@@ -11,6 +11,8 @@ const {
 } = require("discord.js");
 const https = require("https");
 const jsdom = require("jsdom");
+const fs = require("fs");
+const path = require("path");
 const customIdService = require("./custom-id");
 const configService = require("./config");
 
@@ -253,4 +255,44 @@ module.exports.createEmbed = ({ description, title }) => {
 	}
 
 	return embed;
+};
+
+const clearDirectory = module.exports.clearDirectory = async (directoryPath) => {
+	try {
+		const files = await fs.promises.readdir(directoryPath);
+
+		await Promise.all(files.map(async (file) => {
+			const filePath = path.join(directoryPath, file);
+			const stats = await fs.promises.stat(filePath);
+
+			if (stats.isDirectory()) {
+				await clearDirectory(filePath);
+				await fs.promises.rmdir(filePath);
+			} else {
+				await fs.promises.unlink(filePath);
+			}
+		}));
+	} catch (err) {
+		logError(err);
+	}
+};
+
+const getFolderSize = module.exports.getFolderSize = async (folderPath) => {
+	let totalSize = 0;
+
+	const files = await fs.promises.readdir(folderPath);
+	const filePromises = files.map(async (file) => {
+		const filePath = path.join(folderPath, file);
+		const stats = await fs.promises.stat(filePath);
+		if (stats.isDirectory()) {
+			return getFolderSize(filePath);
+		} else {
+			return stats.size;
+		}
+	});
+
+	const sizes = await Promise.all(filePromises);
+	totalSize = sizes.reduce((acc, size) => acc + size, 0);
+
+	return totalSize;
 };

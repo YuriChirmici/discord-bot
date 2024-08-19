@@ -1,38 +1,8 @@
-const { Events, AttachmentBuilder, AuditLogEvent } = require("discord.js");
+const { Events, AuditLogEvent } = require("discord.js");
 const configService = require("../../config");
-const fetch = require("node-fetch");
+const messageDeletionService = require("../../messages-deletion");
 
-const checkShouldNotify = async ({ client, memberId, channelId }) => {
-	const { channelExceptions = [], rolesExceptions = [] } = configService.deletedMessagesLogging;
-	channelExceptions.push(configService.deletedMessagesLogging.channelId);
-
-	if (channelExceptions.includes(channelId)) {
-		return false;
-	}
-
-	if (rolesExceptions.length) {
-		const guild = await client.guilds.fetch(configService.guildId);
-		const member = await guild.members.fetch(memberId);
-		const hasExceptionRoles = !!member.roles.cache.find(r => rolesExceptions.includes(r.id));
-		if (hasExceptionRoles) {
-			return false;
-		}
-	}
-
-	return true;
-};
-
-const createDeletedAttachments = async (deletedFiles) =>
-	await Promise.all(deletedFiles.map((file) => copyDocument(file)));
-
-const copyDocument = async (attachment) => {
-	const response = await fetch(attachment.url);
-	const buffer = await response.buffer();
-	const newAttachment = new AttachmentBuilder(buffer, { name: attachment.name });
-	return newAttachment;
-};
-
-const notifyEdited = async (client, oldState, newState) => {
+const notifyEdited = async ({ client, oldState, newState }) => {
 	const messageUrl = `https://discord.com/channels/${configService.guildId}/${oldState.channelId}/${newState.id}`;
 	let message = `Редактирование (<@${newState.author.id}> в ${messageUrl})\n`;
 
@@ -40,28 +10,26 @@ const notifyEdited = async (client, oldState, newState) => {
 	if ((oldState.content || "").trim() && oldState.content !== newState.content) {
 		// text editing
 		hasTextLogs = true;
-		message += `${oldState.content}\n↓\n${newState.content}`;
+		message += `${oldState.content}\n↓\n${newState.content}\n`;
 	}
 
-	let attachments;
-	const oldFiles = Array.from(oldState.attachments.values());
-	const newFiles = Array.from(newState.attachments.values());
-	if (oldFiles.length !== newFiles.length) {
-		// file deletion
-		message += "Файл(ы) удален(ы):";
-		const deletedFiles = oldFiles.filter((oldFile) => !newFiles.find((newFile) => newFile.id === oldFile.id));
-		attachments = await createDeletedAttachments(deletedFiles);
-	}
+	const { attachmentsText, attachments } = await messageDeletionService.getDeletedFilesData(
+		oldState.id,
+		oldState.attachments,
+		newState.attachments
+	);
 
-	if (!hasTextLogs && !attachments?.length) {
+	message += attachmentsText;
+
+	if (!hasTextLogs && !attachmentsText) {
 		return;
 	}
 
 	await sendLog(client, message, attachments);
 };
 
-const notifyDeleted = async (client, oldState) => {
-	const auditLog = await getAuditLog(oldState.guild, oldState.author.id);
+const notifyDeleted = async ({ client, oldState }) => {
+	const auditLog = await getAuditLog(oldState.guild, oldState.author.id, true);
 
 	const dateCreated = new Date(oldState.createdTimestamp).toLocaleString("ru-RU", { timeZoneName: "short" });
 	let message = `Удаление (<#${oldState.channelId}>)\n` +
@@ -70,21 +38,25 @@ const notifyDeleted = async (client, oldState) => {
 		`Дата создания сообщения: ${dateCreated}\n`;
 
 	if (oldState.content) {
-		message += `Сообщение: ${oldState.content}`;
+		message += `Сообщение: ${oldState.content}\n`;
 	}
 
-	let attachments;
-	const files = Array.from(oldState.attachments.values());
-	if (files.length) {
-		// file deletion
-		message += "\n\nФайл(ы) удален(ы):";
-		attachments = await createDeletedAttachments(files);
-	}
+	const { attachmentsText, attachments } = await messageDeletionService.getDeletedFilesData(
+		oldState.id,
+		oldState.attachments
+	);
+
+	message += attachmentsText;
 
 	await sendLog(client, message, attachments);
 };
 
-const getAuditLog = async (guild, targetId) => {
+const getAuditLog = async (guild, targetId, shouldWait) => {
+	if (shouldWait) {
+		// wait in case the audit log has not been created yet
+		await new Promise((resolve) => setTimeout(resolve, 2000));
+	}
+
 	const fetchedLogs = await guild.fetchAuditLogs({
 		limit: 5,
 		type: AuditLogEvent.MessageDelete,
@@ -99,7 +71,7 @@ const getAuditLog = async (guild, targetId) => {
 
 const sendLog = async (client, content, files) => {
 	const logsChannel = await client.channels.fetch(configService.deletedMessagesLogging.channelId);
-	await logsChannel.send({ content, files });
+	await logsChannel.send({ content: content.trim(), files });
 };
 
 const registerEvents = (client) => {
@@ -107,12 +79,13 @@ const registerEvents = (client) => {
 		try {
 			const memberId = newState.author.id;
 			const channelId = newState.channelId;
-			const shouldNotify = await checkShouldNotify({ client, memberId, channelId });
+
+			const shouldNotify = await messageDeletionService.checkShouldLog({ client, memberId, channelId });
 			if (!shouldNotify) {
 				return;
 			}
 
-			await notifyEdited(client, oldState, newState);
+			await notifyEdited({ client, oldState, newState });
 		} catch (err) {
 			logError(err);
 		}
@@ -120,16 +93,38 @@ const registerEvents = (client) => {
 
 	client.on(Events.MessageDelete, async (oldState) => {
 		try {
-			// wait in case the audit log has not been created yet
-			await new Promise((resolve) => setTimeout(resolve, 2000));
 			const memberId = oldState.author.id;
 			const channelId = oldState.channelId;
-			const shouldNotify = await checkShouldNotify({ client, memberId, channelId });
+
+			const shouldNotify = await messageDeletionService.checkShouldLog({ client, memberId, channelId });
 			if (!shouldNotify) {
 				return;
 			}
 
-			await notifyDeleted(client, oldState);
+			await notifyDeleted({ client, oldState });
+		} catch (err) {
+			logError(err);
+		}
+	});
+
+	client.on(Events.MessageCreate, async (message) => {
+		try {
+			const memberId = message.author.id;
+			const channelId = message.channelId;
+			const shouldNotify = await messageDeletionService.checkShouldLog({ client, memberId, channelId });
+			if (!shouldNotify || !message.attachments.size) {
+				return;
+			}
+
+			await messageDeletionService.logMessageAttachments(message);
+		} catch (err) {
+			logError(err);
+		}
+	});
+
+	client.on(Events.ChannelDelete, async (channel) => {
+		try {
+			await messageDeletionService.deleteFilesByChannelId(channel.id);
 		} catch (err) {
 			logError(err);
 		}

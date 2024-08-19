@@ -2,23 +2,25 @@
 	"token": "",
 	"clientId": "",
 	"guildId": "",
-    "botMemberId": "",
+	"botMemberId": "",
 	"database": {
 		"connectionLink": ""
 	},
-    "clanName": "",
-    "commandsPermission": "ManageRoles",
-    "voiceConnections": [
-        {
-            "channelId": "",
-            "categoryId": "",
-            "channelName": ""
-        }
-    ],
-    "errorsChannelId": "",
-    "deletedMessagesLogging": {
-        "channelId": "",
-        "channelExceptions": [],
-        "rolesExceptions": []
-    }
+	"clanName": "",
+	"commandsPermission": "ManageRoles",
+	"voiceConnections": [
+		{
+			"channelId": "",
+			"categoryId": "",
+			"channelName": ""
+		}
+	],
+	"errorsChannelId": "",
+	"deletedMessagesLogging": {
+		"channelId": "",
+		"channelExceptions": [],
+		"rolesExceptions": [],
+		"savedFileMaxSizeMB": 10,
+		"savedFolderMaxSizeMB": 500
+	}
 }

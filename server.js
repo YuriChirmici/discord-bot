@@ -6,6 +6,7 @@ const discordClientService = require("./services/client");
 const { connect: dbConnect } = require("./database");
 const configService = require("./services/config");
 const commandsService = require("./services/commands");
+const messageDeletionService = require("./services/messages-deletion");
 
 const srcPath = path.join(__dirname, "./src");
 if (!fs.existsSync(srcPath)) {
@@ -27,6 +28,7 @@ if (!fs.existsSync(srcPath)) {
 		}
 
 		await Promise.all(promises);
+		await messageDeletionService.clearAll();
 		const discordClient = discordClientService.getClient();
 
 		schedulerStart(discordClient);
