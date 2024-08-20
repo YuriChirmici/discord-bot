@@ -13,7 +13,7 @@ const notifyEdited = async ({ client, oldState, newState }) => {
 		message += `${oldState.content}\n↓\n${newState.content}\n`;
 	}
 
-	const { attachmentsText, attachments } = await messageDeletionService.getDeletedFilesData(
+	const { attachmentsText = "", attachments } = await messageDeletionService.getDeletedFilesData(
 		oldState.id,
 		oldState.attachments,
 		newState.attachments
@@ -25,7 +25,7 @@ const notifyEdited = async ({ client, oldState, newState }) => {
 		return;
 	}
 
-	await sendLog(client, message, attachments);
+	await sendLog({ client, message, attachments });
 };
 
 const notifyDeleted = async ({ client, oldState }) => {
@@ -41,14 +41,16 @@ const notifyDeleted = async ({ client, oldState }) => {
 		message += `Сообщение: ${oldState.content}\n`;
 	}
 
-	const { attachmentsText, attachments } = await messageDeletionService.getDeletedFilesData(
+	let stickers = Array.from(oldState.stickers.values()).map (({ id }) => id);
+
+	const { attachmentsText = "", attachments } = await messageDeletionService.getDeletedFilesData(
 		oldState.id,
 		oldState.attachments
 	);
 
 	message += attachmentsText;
 
-	await sendLog(client, message, attachments);
+	await sendLog({ client, message, attachments, stickers });
 };
 
 const getAuditLog = async (guild, targetId, shouldWait) => {
@@ -69,9 +71,13 @@ const getAuditLog = async (guild, targetId, shouldWait) => {
 	return auditLog;
 };
 
-const sendLog = async (client, content, files) => {
+const sendLog = async ({ client, message, attachments, stickers }) => {
 	const logsChannel = await client.channels.fetch(configService.deletedMessagesLogging.channelId);
-	await logsChannel.send({ content: content.trim(), files });
+	await logsChannel.send({
+		content: message.trim(),
+		files: attachments,
+		stickers
+	});
 };
 
 const registerEvents = (client) => {
