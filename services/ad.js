@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const configService = require("./config");
 const { Models } = require("../database");
-const { getButtonsFlat, getDomByUrl, setRoles, getDateFormatted } = require("./helpers");
+const { getButtonsFlat, getDomByUrl, setRoles, getDateFormatted, deleteDuplicates } = require("./helpers");
 
 const srcPath = path.join(__dirname, "../src");
 const nicknamesFilePath = path.join(srcPath, "nicknames.csv");
@@ -396,7 +396,11 @@ class Ad {
 			}
 		});
 
-		return { missingInDiscord, missingInFile, membersStats };
+		return {
+			missingInDiscord: deleteDuplicates(missingInDiscord),
+			missingInFile: deleteDuplicates(missingInFile),
+			membersStats
+		};
 	}
 
 	async _updateRatingRoles(membersStats) {

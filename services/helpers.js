@@ -296,3 +296,7 @@ const getFolderSize = module.exports.getFolderSize = async (folderPath) => {
 
 	return totalSize;
 };
+
+module.exports.deleteDuplicates = (arr) => {
+	return arr.filter((value, index, self) => self.indexOf(value) === index);
+};
