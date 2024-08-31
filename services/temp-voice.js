@@ -77,8 +77,6 @@ class TempVoiceService {
 			try {
 				await channel.delete();
 			} catch (err) { }
-
-			await Models.TempVoiceChannel.deleteOne({ channelId: channel.id });
 		}
 	};
 
