@@ -7,7 +7,9 @@ const TempVoiceMemberSettingsSchema = new mongoose.Schema({
 	userLimit: 	Number,
 	rtcRegion: 	String,
 	permissions: [ {
-		id: 	String,
+		_id:	false,
+		itemId: String,
+		type:   { type: Number },
 		allow: 	[ String ],
 		deny: 	[ String ],
 	} ],

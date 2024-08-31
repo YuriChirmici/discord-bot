@@ -3,6 +3,10 @@ const configService = require("./config");
 const { Models } = require("../database");
 
 class TempVoiceService {
+	constructor() {
+		this.defaultOwnerPermissions = [ "ManageChannels", "ManageRoles", "Connect", "MoveMembers" ];
+	}
+
 	async joinChannel({ client, state }) {
 		const guild = await client.guilds.fetch(state.guild.id);
 		const connection = configService.voiceConnections.find(({ channelId }) => channelId === state.channelId);
@@ -13,14 +17,14 @@ class TempVoiceService {
 		const memberId = state.member.id;
 		const categoryId = connection.categoryId;
 
-		let savedSettings = (await Models.TempVoiceMemberSettings.findOne({ categoryId, memberId }).lean()) || {
+		let savedSettings = (await this.getSavedSettings({ categoryId, memberId })) || {
 			name: connection.channelName,
 			userLimit: 10,
-			permissions: [ {
-				id: memberId,
-				allow: [ "ManageChannels", "ManageRoles", "Connect" ]
-			} ]
+			permissions: []
 		};
+
+		const savedPermissions = savedSettings.permissions;
+		const permissionOverwrites = await this.prepareChannelPermissions({ guild, categoryId, memberId, savedPermissions });
 
 		const channel = await guild.channels.create({
 			type: ChannelType.GuildVoice,
@@ -28,18 +32,34 @@ class TempVoiceService {
 			name: savedSettings.name,
 			userLimit: savedSettings.userLimit,
 			rtcRegion: savedSettings.rtcRegion,
+			permissionOverwrites,
 		});
 
-		await state.member.voice.setChannel(channel);
-
-		const ownerPermissions = savedSettings.permissions.find(({ id }) => id === memberId);
-		ownerPermissions.allow.push("ManageChannels", "ManageRoles", "Connect");
-
 		await Promise.all([
-			channel.permissionOverwrites.set(savedSettings.permissions),
+			state.member.voice.setChannel(channel),
 			Models.TempVoiceChannel.create({ channelId: channel.id, ownerId: memberId }),
 		]);
 	};
+
+	async prepareChannelPermissions({ guild, categoryId, memberId, savedPermissions, }) {
+		const categoryChannel = await guild.channels.fetch(categoryId);
+		const categoryPermissions = this.getChannelPermissionsPretty(categoryChannel);
+
+		const ownerPermissions = [ {
+			id: memberId,
+			type: 1, // for member
+			allow: this.defaultOwnerPermissions,
+			deny: []
+		} ];
+
+		const channelPermissions = [
+			...categoryPermissions,
+			...ownerPermissions,
+			...savedPermissions,
+		];
+
+		return channelPermissions;
+	}
 
 	async leaveChannel({ state }) {
 		const channel = state.channel;
@@ -76,14 +96,26 @@ class TempVoiceService {
 			name: channel.name,
 			userLimit: channel.userLimit,
 			rtcRegion: channel.rtcRegion,
-			permissions: Array.from(channel.permissionOverwrites.cache).map(([ , overwrite ]) => ({
-				id: overwrite.id,
-				allow: overwrite.allow.toArray(),
-				deny: overwrite.deny.toArray()
-			}))
+			permissions: this.getChannelPermissionsPretty(channel, "itemId")
 		};
 
 		await Models.TempVoiceMemberSettings.create(data);
+	}
+
+	getChannelPermissionsPretty(channel, idKey = "id") {
+		return Array.from(channel.permissionOverwrites.cache).map(([ , overwrite ]) => ({
+			[idKey]: overwrite.id,
+			type: overwrite.type,
+			allow: overwrite.allow.toArray(),
+			deny: overwrite.deny.toArray()
+		}));
+	}
+
+	async getSavedSettings({ categoryId, memberId }) {
+		const savedSettings = await Models.TempVoiceMemberSettings.findOne({ categoryId, memberId }).lean();
+		(savedSettings?.permissions || []).forEach((item) => item.id = item.itemId);
+
+		return savedSettings;
 	}
 }
 
