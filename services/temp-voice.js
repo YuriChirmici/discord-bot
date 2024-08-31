@@ -4,7 +4,8 @@ const { Models } = require("../database");
 
 class TempVoiceService {
 	constructor() {
-		this.defaultOwnerPermissions = [ "ViewChannel", "ManageChannels", "ManageRoles", "Connect", "MoveMembers" ];
+		this.defaultOwnerPermissions = [ "ManageChannels", "ViewChannel", "ManageRoles", "Connect", "MoveMembers" ];
+		this.defaultBotPermissions = [ "ManageChannels", "ViewChannel", "Connect", "ManageRoles" ];
 	}
 
 	async joinChannel({ client, state }) {
@@ -50,13 +51,19 @@ class TempVoiceService {
 			id: memberId,
 			type: 1, // for member
 			allow: this.defaultOwnerPermissions,
-			deny: []
+		} ];
+
+		const botPermissions = [ {
+			id: configService.botMemberId,
+			type: 1, // for member
+			allow: this.defaultBotPermissions,
 		} ];
 
 		const channelPermissions = [
 			...categoryPermissions,
 			...ownerPermissions,
 			...savedPermissions,
+			...botPermissions,
 		];
 
 		return channelPermissions;
