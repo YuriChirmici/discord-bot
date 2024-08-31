@@ -32,13 +32,14 @@ class TempVoiceService {
 			name: savedSettings.name,
 			userLimit: savedSettings.userLimit,
 			rtcRegion: savedSettings.rtcRegion,
-			permissionOverwrites,
 		});
 
 		await Promise.all([
 			state.member.voice.setChannel(channel),
 			Models.TempVoiceChannel.create({ channelId: channel.id, ownerId: memberId }),
 		]);
+
+		await channel.permissionOverwrites.set(permissionOverwrites);
 	};
 
 	async prepareChannelPermissions({ guild, categoryId, memberId, savedPermissions, }) {
