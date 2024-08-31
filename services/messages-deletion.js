@@ -15,21 +15,33 @@ class MessagesDeletionService {
 		}
 	}
 
-	checkShouldLog = async ({ client, memberId, channelId }) => {
-		const { channelExceptions = [], rolesExceptions = [] } = configService.deletedMessagesLogging;
-		channelExceptions.push(configService.deletedMessagesLogging.channelId);
-
-		if (channelExceptions.includes(channelId)) {
+	async checkShouldLog({ client, memberId, channelId }) {
+		const guild = await client.guilds.fetch(configService.guildId);
+		if (!(await this.checkShouldLogChannel({ guild, channelId }))) {
 			return false;
 		}
 
+		const { rolesExceptions = [] } = configService.deletedMessagesLogging;
 		if (rolesExceptions.length) {
-			const guild = await client.guilds.fetch(configService.guildId);
 			const member = await guild.members.fetch(memberId);
 			const hasExceptionRoles = !!member.roles.cache.find(r => rolesExceptions.includes(r.id));
 			if (hasExceptionRoles) {
 				return false;
 			}
+		}
+
+		return true;
+	};
+
+	async checkShouldLogChannel({ guild, channelId }) {
+		const { channelExceptions = [] } = configService.deletedMessagesLogging;
+		if (channelExceptions.includes(channelId)) {
+			return false;
+		}
+
+		const channel = await guild.channels.fetch(channelId);
+		if (channel.parentId) {
+			return await this.checkShouldLogChannel({ guild, channelId: channel.parentId });
 		}
 
 		return true;
