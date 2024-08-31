@@ -4,7 +4,7 @@ const { Models } = require("../database");
 
 class TempVoiceService {
 	constructor() {
-		this.defaultOwnerPermissions = [ "ManageChannels", "ManageRoles", "Connect", "MoveMembers" ];
+		this.defaultOwnerPermissions = [ "ViewChannel", "ManageChannels", "ManageRoles", "Connect", "MoveMembers" ];
 	}
 
 	async joinChannel({ client, state }) {
