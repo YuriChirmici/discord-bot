@@ -42,17 +42,20 @@ class TempVoiceService {
 	};
 
 	async leaveChannel({ state }) {
-		const connection = configService.voiceConnections.find(({ categoryId }) => categoryId === state.channel.parent.id);
+		const channel = state.channel;
+		const connection = configService.voiceConnections.find(({ categoryId }) => categoryId === channel.parent.id);
 		if (!connection) {
 			return;
 		}
 
-		const channel = state.channel;
-		if (state.channel.members.size === 0) {
+		const dbChannel = await Models.TempVoiceChannel.findOne({ channelId: channel.id });
+		if (dbChannel?.ownerId === state.member.id) {
 			await this.saveMemberSettings(channel, connection.categoryId);
+		}
 
+		if (channel.members.size === 0) {
 			try {
-				await state.channel.delete();
+				await channel.delete();
 			} catch (err) { }
 
 			await Models.TempVoiceChannel.deleteOne({ channelId: channel.id });
