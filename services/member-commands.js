@@ -238,7 +238,7 @@ class MemberCommandsService {
 				promises.push(member.roles[isStart ? "add" : "remove"](vacationRoles));
 			}
 
-			promises.push(profileService.createOrUpdate(member.id, { [profileQueryKey]: null }));
+			promises.push(profileService.createOrUpdate(profile.memberId, { [profileQueryKey]: null }));
 		}
 
 		await Promise.all(promises);
