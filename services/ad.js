@@ -231,7 +231,8 @@ class Ad {
 	}
 
 	getRatingByDate(date) {
-		const ratings = this.getAdConfigByName(this.attendanceConfigName).ratings || [];
+		const attendanceConfig = this.getAdConfigByName(this.attendanceConfigName);
+		const ratings = attendanceConfig.ratings || [];
 		if (!ratings.length) {
 			return;
 		}
@@ -240,11 +241,13 @@ class Ad {
 		const year = new Date().getFullYear();
 
 		const startMonth = month % 2 === 1 ? month : month - 1;
-		const step = 7;
 		const startDate = new Date(year, startMonth - 1, 1, 0, 0, 0, 0);
 		const currentDate = new Date(year, month - 1, day, 0, 0, 0, 0);
 
+		const firstWeekLength = attendanceConfig.firstWeekLength || 7;
+
 		for (let i = 0; i < ratings.length; i++) {
+			let step = i === 0 ? firstWeekLength : 7;
 			startDate.setDate(startDate.getDate() + step);
 			if (startDate.getTime() > currentDate.getTime() || (i === ratings.length - 1)) {
 				return ratings[i];

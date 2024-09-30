@@ -23,6 +23,7 @@
 					"time": ""
 				},
 				"ratings": [ "" ],
+				"firstWeekLength": 7,
 				"statisticsData": {
 					"rolesSelectors": [ "" ],
 					"rolesExceptions": [ "" ]
