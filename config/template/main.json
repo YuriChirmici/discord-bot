@@ -22,5 +22,6 @@
 		"rolesExceptions": [],
 		"savedFileMaxSizeMB": 10,
 		"savedFolderMaxSizeMB": 500
-	}
+	},
+	"sheetMembersChannelId": ""
 }

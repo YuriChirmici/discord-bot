@@ -3,6 +3,7 @@ const path = require("path");
 const configService = require("./config");
 const { Models } = require("../database");
 const { getButtonsFlat, getDomByUrl, setRoles, getDateFormatted, deleteDuplicates } = require("./helpers");
+const profileService = require("./profile");
 
 const srcPath = path.join(__dirname, "../src");
 const nicknamesFilePath = path.join(srcPath, "nicknames.csv");
@@ -284,7 +285,7 @@ class Ad {
 		return data;
 	}
 
-	async getMembersNicknames() {
+	async getSheetStats() {
 		if (!fs.existsSync(nicknamesFilePath)) {
 			return;
 		}
@@ -295,52 +296,115 @@ class Ad {
 		}
 
 		const rows = nicknamesCSV.split("\n");
-		const nicknamesObj = {};
+		const sheetStatsObj = {};
 
 		for (let i = 1; i < rows.length; i++) {
 			const parts = rows[i].split(",");
 			const regType = (parts[7] || "").trim();
-			if (![ "A", "А" ].includes(regType)) {
+			if (regType !== "A") {
 				continue;
 			}
 
-			const name = parts[1].trim();
-			const nicks = parts[2].split(" | ").map(n => n.trim()).filter(n => n);
-			if (!name || !nicks.length) {
+			const discordName = parts[1].trim();
+			const gameNickname = parts[2].trim();
+			if (!discordName || !gameNickname) {
 				continue;
 			}
 
-			const namePrepared = name[0] === "@" ? name.substring(1) : name;
-			nicknamesObj[namePrepared] ||= [];
-			nicknamesObj[namePrepared].push(...nicks);
+			const entryDate = parts[4].trim();
+			const number = Number.parseInt(parts[0].trim());
+
+			const namePrepared = discordName[0] === "@" ? discordName.substring(1) : discordName;
+			sheetStatsObj[namePrepared] ||= [];
+			sheetStatsObj[namePrepared].push({
+				entryDate,
+				regType,
+				number,
+				gameNickname,
+			});
 		}
 
-		const nicknamesArray = Object.keys(nicknamesObj).map((name) => ({ name, nicks: nicknamesObj[name] }));
+		const sheetStatsArray = Object.entries(sheetStatsObj).map(([ discordName, sheetStats ]) => ({
+			discordName,
+			sheetStats,
+		}));
 
-		return nicknamesArray;
+		return sheetStatsArray;
 	}
 
 	async processRatingRolesUpdate(interaction) {
-		const resultText = await this.updateRatingRoles(interaction);
+		const { resultText } = await this.updateRatingRoles(interaction);
 		const channel = await interaction.guild.channels.fetch(configService.ratingRoles.resultChannelId);
 		await channel.send(resultText);
 	}
 
 	async updateRatingRoles(interaction) {
-		const [ stats, nicknames, members ] = await Promise.all([
+		const [ siteStats, sheetStats, members, dbProfiles ] = await Promise.all([
 			this.getPlayersStats(),
-			this.getMembersNicknames(),
-			this.getGuildMembers(interaction.guild)
+			this.getSheetStats(),
+			this.getGuildMembers(interaction.guild),
+			Models.Profile.find({ "sheetItem.serialNumber": { $exists: true } }).lean(), // TODO: get only needed profiles / fields ?
 		]);
 
-		if (!stats || !nicknames) {
-			return this.prepareRolesUpdateErrorText({ statSiteError: !stats, fileError: !nicknames });
+		if (!siteStats || !sheetStats) {
+			const resultText = this.prepareRolesUpdateErrorText({ statSiteError: !siteStats, fileError: !sheetStats });
+			return { resultText };
 		}
 
-		const { missingInDiscord, missingInFile, membersStats } = this.prepareMemberStats(stats, nicknames, members);
-		await this._updateRatingRoles(membersStats);
+		const gameAccounts = this.prepareGameAccountsData(siteStats, sheetStats, members, dbProfiles);
+		const resultText = this.validateGameAccounts(gameAccounts);
 
-		return this.prepareRolesUpdateText({ missingInFile, missingInDiscord });
+		const validGameAccounts = gameAccounts.filter((acc) => !acc.hasCheckError);
+		await this._updateRatingRoles(validGameAccounts);
+
+		const groupedAccounts = {}; // group by discord acc
+		validGameAccounts.filter((acc) => acc.member).forEach((acc) => {
+			groupedAccounts[acc.member.id] ||= [];
+			groupedAccounts[acc.member.id].push(acc);
+		});
+
+		for (let key in groupedAccounts) {
+			await this._sendSheetMemberToChannel(interaction, groupedAccounts[key]);
+		}
+
+		return { resultText };
+	}
+
+	async _sendSheetMemberToChannel(interaction, accountData) {
+		const { member, profile, sheetNumber } = accountData[0];
+		const channelId = configService.sheetMembersChannelId;
+		if (!channelId || !member) {
+			return;
+		}
+
+		const compareTwoNicknameArrays = (arr1, arr2) => arr1.sort().join() === arr2.sort().join();
+		const gameNicknames = accountData.map(({ gameNickname }) => gameNickname);
+		const profileNicknames = profile?.sheetItem?.gameNicknames || [];
+		const hasNicknamesChanged = !compareTwoNicknameArrays(gameNicknames, profileNicknames);
+
+		const oldMessageId = profile?.sheetItem?.messageId;
+		const userTag = `<@${member.user.id}>`;
+		const messageText = `${sheetNumber}. ${userTag} - ${gameNicknames.join(" | ")}`;
+		let message;
+		if (!oldMessageId) {
+			const channel = await interaction.guild.channels.fetch(channelId);
+			message = await channel.send(messageText);
+		} else if (hasNicknamesChanged) {
+			const channel = await interaction.guild.channels.fetch(profile.sheetItem.channelId);
+			message = await channel.messages.fetch(oldMessageId);
+			await message.edit(messageText);
+		} else {
+			return;
+		}
+
+		await profileService.createOrUpdate(member.id, {
+			sheetItem: {
+				serialNumber: sheetNumber,
+				channelId: message.channel.id,
+				messageId: message.id,
+				gameNicknames,
+			}
+		});
 	}
 
 	prepareRolesUpdateErrorText({ statSiteError, fileError }) {
@@ -356,63 +420,235 @@ class Ad {
 		return message.trim();
 	}
 
-	prepareRolesUpdateText({ missingInFile = [], missingInDiscord = [] }) {
-		let message = "Успешно обновлено.\n\n";
-		if (missingInFile.length) {
-			const names = missingInFile.map((nickname) => this.getDiscordFriendlyName(nickname));
-			message += "**Не найдено в файле:**\n" + names.join("\n") + "\n\n";
-		}
+	prepareGameAccountsData(allSiteStats, allSheetStats, members, dbProfiles) {
+		const gameAccounts = [];
 
-		if (missingInDiscord.length) {
-			const names = missingInDiscord.map((nickname) => this.getDiscordFriendlyName(nickname));
-			message += "**Не найдено в Дискорде:**\n" + names.join("\n");
-		}
+		allSheetStats.forEach(({ discordName, sheetStats }) => {
+			const gameNicknames = sheetStats.map(({ gameNickname }) => gameNickname);
+			const siteStats = gameNicknames.map((nick) => allSiteStats.find((stat) => stat.nickname === nick)).filter(Boolean);
+			const foundMember = members.find((member) => member.user.username === discordName);
+			const foundProfile = foundMember ? dbProfiles.find(({ memberId }) => memberId === foundMember.id) : null;
 
-		return message.trim();
+			(sheetStats || []).forEach((sheetStat) => {
+				const foundSiteStat = (siteStats || []).find(({ nickname }) => nickname === sheetStat.gameNickname);
+				gameAccounts.push({
+					discordName,
+					member: foundMember,
+					profile: foundProfile,
+					...this._prepareSheetGameAccountData(sheetStat),
+					...this._prepareSiteGameAccountData(foundSiteStat),
+				});
+			});
+		});
+
+		// add site stats which doesn't have sheet stats
+		allSiteStats.forEach((stat) => {
+			const alreadyAdded = gameAccounts.find(({ gameNickname }) => gameNickname === stat.nickname);
+			if (!alreadyAdded) {
+				gameAccounts.push({ ...this._prepareSiteGameAccountData(stat) });
+			}
+		});
+
+		return gameAccounts;
+	}
+
+	validateGameAccounts(gameAccounts) {
+		const errors = [
+			this._checkPlayersListChanges(gameAccounts),
+			this._checkMissingInDiscordAcc(gameAccounts),
+			this._checkMismatchEntryDate(gameAccounts),
+			this._checkMismatchRole(gameAccounts),
+			this._checkMismatchSerialNumber(gameAccounts),
+		];
+
+		errors.forEach(({ errorItems }) => errorItems.forEach((item) => item.hasCheckError = true));
+
+		let errorMessage = errors.map(({ message }) => message).filter(Boolean).join("\n\n");
+
+		return errorMessage;
 	}
 
 	getDiscordFriendlyName(name) {
 		return name.replaceAll("_", "\\_");
 	}
 
-	prepareMemberStats(stats, nicknames, members) {
-		const missingInDiscord = [];
-		const missingInFile = [];
-		const membersStats = {};
+	_checkMissingInDiscordAcc(gameAccounts) {
+		const errorItems = gameAccounts.filter((acc) => acc.hasSheetStat && !acc.member);
 
-		stats.forEach((stat) => {
-			const nicknameItem = nicknames.find(({ nicks }) => nicks.find((nick) => stat.nickname === nick));
-			if (nicknameItem) {
-				const foundMember = members.find((member) => member.user.username === nicknameItem.name);
-				if (foundMember) {
-					membersStats[nicknameItem.name] ||= {
-						member: foundMember,
-						stats: []
-					};
-
-					membersStats[nicknameItem.name].stats.push(stat);
-				} else {
-					missingInDiscord.push(nicknameItem.name);
-				}
-			} else if (stat.role !== "Private") {
-				missingInFile.push(stat.nickname);
-			}
-		});
+		const names = deleteDuplicates(errorItems.map(({ discordName }) => this.getDiscordFriendlyName(discordName)));
+		const errorMessage = names.map((name) => `Игрок ${name} не найден в Дискорде`);
 
 		return {
-			missingInDiscord: deleteDuplicates(missingInDiscord),
-			missingInFile: deleteDuplicates(missingInFile),
-			membersStats
+			message: errorMessage.join("\n"),
+			errorItems,
 		};
 	}
 
-	async _updateRatingRoles(membersStats) {
+	_checkPlayersListChanges(gameAccounts) {
+		const { missingInSheetList, missingInSiteList, changedNicknameList } = this._getPlayersListChanges(gameAccounts);
+		let messages = [];
+
+		if (missingInSheetList.length) {
+			const names = deleteDuplicates(missingInSheetList.map(({ gameNickname }) => gameNickname));
+			messages.push(names.map((name) => `Игрок ${name} не найден в листе участников`).join("\n"));
+		}
+
+		if (missingInSiteList.length) {
+			messages.push(missingInSiteList.map((item) => {
+				const messageUrl = this._prepareSheetChannelMessage(item.profile?.sheetItem);
+				const userStr = messageUrl ? `[${item.gameNickname}](${messageUrl})` : item.gameNickname;
+				return `Игрок ${userStr} покинул полк!`;
+			}).join("\n"));
+		}
+
+		if (changedNicknameList.length) {
+			messages.push(changedNicknameList.map(({ oldGameNickname, newGameNickname }) =>
+				`Вероятно игрок ${oldGameNickname} сменил ник на ${newGameNickname}`
+			).join("\n"));
+		}
+
+		return {
+			message: messages.join("\n\n"),
+			errorItems: [ ...missingInSheetList, ...missingInSiteList, ...changedNicknameList ],
+		};
+	}
+
+	_getPlayersListChanges(gameAccounts) {
+		let missingInSheetList = gameAccounts.filter((acc) => !acc.hasSheetStat && acc.hasSiteStat && acc.siteRole !== "Private");
+		let missingInSiteList = gameAccounts.filter((acc) => acc.hasSheetStat && !acc.hasSiteStat);
+
+		// if site and sheet missing items have equal entry date, then probably it's a nickname change
+		const changedNicknameList = missingInSheetList.map((siteItem) => {
+			const siteStats = missingInSiteList.filter((sheetItem) => siteItem.siteEntryDate === sheetItem.sheetEntryDate);
+			if (siteStats.length !== 1) {
+				return;
+			}
+
+			return {
+				...siteItem,
+				...siteStats[0],
+				oldGameNickname: siteStats[0].gameNickname,
+				newGameNickname: siteItem.gameNickname,
+			};
+		}).filter(Boolean);
+
+		// remove items which are in changedNicknameList. Sheet has old nickname, site has new
+		missingInSheetList = missingInSheetList.filter((item) =>
+			!changedNicknameList.find(({ newGameNickname }) => newGameNickname === item.gameNickname)
+		);
+
+		// remove items which are in changedNicknameList. Sheet has old nickname, site has new
+		missingInSiteList = missingInSiteList.filter((item) =>
+			!changedNicknameList.find(({ oldGameNickname }) => oldGameNickname === item.gameNickname)
+		);
+
+		return {
+			missingInSheetList,
+			missingInSiteList,
+			changedNicknameList,
+		};
+	}
+
+	_checkMismatchEntryDate(gameAccounts) {
+		const errorItems = gameAccounts.filter((acc) =>
+			acc.hasSheetStat && acc.hasSiteStat && acc.sheetEntryDate !== acc.siteEntryDate
+		);
+
+		const names = deleteDuplicates(errorItems.map(({ gameNickname }) => gameNickname));
+		const errorMessage = names.map((name) => `У игрока ${name} записана неверная дата вступления`);
+
+		return {
+			message: errorMessage.join("\n"),
+			errorItems,
+		};
+	}
+
+	_checkMismatchRole(gameAccounts) {
+		const errorItems = gameAccounts.filter((acc) =>
+			acc.hasSheetStat && acc.hasSiteStat && acc.siteRole === "Private"
+		);
+
+		const names = deleteDuplicates(errorItems.map(({ gameNickname }) => gameNickname));
+		const errorMessage = names.map((name) => `Игроку ${name} не выдан сержант!`);
+
+		return {
+			message: errorMessage.join("\n"),
+			errorItems,
+		};
+	}
+
+	_checkMismatchSerialNumber(gameAccounts) {
+		const errorItems = gameAccounts.filter((acc) => {
+			const profileSerialNumber = acc.profile?.sheetItem?.serialNumber;
+			return acc.sheetNumber && profileSerialNumber && profileSerialNumber !== acc.sheetNumber;
+		});
+
+		const errorMessage = errorItems.map((item) => {
+			const messageUrl = this._prepareSheetChannelMessage(item.profile.sheetItem);
+			return `[${item.gameNickname}](${messageUrl}) имеет некорректный номер в листе пользователей`;
+		});
+
+		return {
+			message: errorMessage.join("\n"),
+			errorItems,
+		};
+	}
+
+	_prepareSheetChannelMessage(sheetItem) {
+		if (!sheetItem) {
+			return "";
+		}
+
+		const { channelId, messageId } = sheetItem;
+		const messageUrl = `https://discord.com/channels/${configService.guildId}/${channelId}/${messageId}`;
+		return messageUrl;
+	}
+
+	_prepareSheetGameAccountData(stat) {
+		if (!stat) {
+			return { hasSheetStat: false };
+		}
+
+		return {
+			hasSheetStat: true,
+			regType: stat.regType,
+			sheetEntryDate: stat.entryDate,
+			sheetNumber: stat.number,
+			gameNickname: stat.gameNickname,
+		};
+	}
+
+	_prepareSiteGameAccountData(stat) {
+		if (!stat) {
+			return { hasSiteStat: false };
+		}
+
+		return {
+			hasSiteStat: true,
+			siteRating: stat.rating,
+			siteActivity: stat.activity,
+			siteEntryDate: stat.entryDate,
+			siteRole: stat.role,
+			gameNickname: stat.nickname,
+		};
+	}
+
+	async _updateRatingRoles(gameAccounts) {
+		const groupedAccounts = {};
+		gameAccounts
+			.filter((acc) => acc.member && acc.hasSiteStat && acc.siteRole !== "Private")
+			.forEach((acc) => {
+				groupedAccounts[acc.member.id] ||= [];
+				groupedAccounts[acc.member.id].push(acc);
+			});
+
 		const ratingLevels = configService.ratingRoles.levels || [];
 		const promises = [];
-		const allRatingRolesList = ratingLevels.map(({ rolesAdd }) => rolesAdd).flat().filter((r) => r);
+		const allRatingRolesList = ratingLevels.map(({ rolesAdd }) => rolesAdd).flat().filter(Boolean);
 
-		Object.values(membersStats).forEach(({ member, stats }) => {
-			const rolesForAdd = stats.map(({ rating }) => this._getRolesByRating(rating)).flat();
+		Object.values(groupedAccounts).forEach((accounts) => {
+			const member = accounts[0].member;
+			const rolesForAdd = accounts.map(({ siteRating }) => this._getRolesByRating(siteRating)).flat();
 			promises.push(setRoles(member, rolesForAdd, allRatingRolesList));
 		});
 
