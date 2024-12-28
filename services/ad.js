@@ -379,8 +379,8 @@ class Ad {
 
 		const compareTwoNicknameArrays = (arr1, arr2) => arr1.sort().join() === arr2.sort().join();
 		const gameNicknames = accountData.map(({ gameNickname }) => gameNickname);
-		const profileNicknames = profile?.sheetItem?.gameNicknames || [];
-		const hasNicknamesChanged = !compareTwoNicknameArrays(gameNicknames, profileNicknames);
+		const savedNicknames = (profile?.gameAccounts || []).map(({ nickname }) => nickname);
+		const hasNicknamesChanged = !compareTwoNicknameArrays(gameNicknames, savedNicknames);
 
 		const oldMessageId = profile?.sheetItem?.messageId;
 		const userTag = `<@${member.user.id}>`;
@@ -402,8 +402,11 @@ class Ad {
 				serialNumber: sheetNumber,
 				channelId: message.channel.id,
 				messageId: message.id,
-				gameNicknames,
-			}
+			},
+			gameAccounts: accountData.map(({ gameNickname, siteRating }) => ({
+				nickname: gameNickname,
+				lastSavedRating: siteRating,
+			})),
 		});
 	}
 
@@ -497,7 +500,11 @@ class Ad {
 			messages.push(missingInSiteList.map((item) => {
 				const messageUrl = this._prepareSheetChannelMessage(item.profile?.sheetItem);
 				const userStr = messageUrl ? `[${item.gameNickname}](${messageUrl})` : item.gameNickname;
-				return `Игрок ${userStr} покинул полк!`;
+				const savedRating = item.profile?.gameAccounts?.find(({ nickname }) => nickname === item.gameNickname)?.lastSavedRating;
+				return [
+					`Игрок ${userStr} покинул полк!`,
+					savedRating ? `ЛПР - ${savedRating}` : "",
+				].filter(Boolean).join(" ");
 			}).join("\n"));
 		}
 
@@ -519,17 +526,29 @@ class Ad {
 
 		// if site and sheet missing items have equal entry date, then probably it's a nickname change
 		const changedNicknameList = missingInSheetList.map((siteItem) => {
-			const siteStats = missingInSiteList.filter((sheetItem) => siteItem.siteEntryDate === sheetItem.sheetEntryDate);
-			if (siteStats.length !== 1) {
+			const sheetStats = missingInSiteList.filter((sheetItem) => siteItem.siteEntryDate === sheetItem.sheetEntryDate);
+			if (sheetStats.length !== 1) {
 				return;
 			}
 
-			return {
-				...siteItem,
-				...siteStats[0],
-				oldGameNickname: siteStats[0].gameNickname,
+			const sheetItem = sheetStats[0];
+			const nicknameChangesData = {
+				oldGameNickname: sheetItem.gameNickname,
 				newGameNickname: siteItem.gameNickname,
 			};
+
+			const newItem = {
+				...siteItem,
+				...sheetItem,
+				...nicknameChangesData
+			};
+
+			[ sheetItem, siteItem ].forEach((item) => {
+				item.hasCheckError = true;
+				item.nicknameChangesData = nicknameChangesData;
+			});
+
+			return newItem;
 		}).filter(Boolean);
 
 		// remove items which are in changedNicknameList. Sheet has old nickname, site has new

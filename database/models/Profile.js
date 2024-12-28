@@ -9,8 +9,12 @@ const ProfileSchema = new mongoose.Schema({
 		serialNumber: Number,
 		channelId: String,
 		messageId: String,
-		gameNicknames: [ String ],
 	},
+	gameAccounts: [ {
+		_id: false,
+		nickname: String,
+		lastSavedRating: Number,
+	} ],
 	dateCreated: { type: Date, default: new Date() }
 }).index({ memberId: 1 });
 
