@@ -10,9 +10,9 @@ const {
 	removeMessagesAfterDate,
 	generateRandomKey,
 	getModalAnswers,
-	createEmbed
+	createEmbed,
+	getGuildMembers
 } = require("./helpers");
-const adService = require("./ad");
 const localizationService = require("./localization");
 
 const local = localizationService.getLocal();
@@ -103,7 +103,9 @@ class FormsService {
 			try {
 				await interaction.deferReply();
 				await interaction.deleteReply();
-			} catch (err) {}
+			} catch (err) {
+				console.log(err);
+			}
 		}
 
 		const messageOptions = { memberId: dbRecord.memberId };
@@ -498,7 +500,7 @@ class FormsService {
 		let members;
 		if (hasAuthForms) {
 			const guild = await client.guilds.fetch(configService.guildId);
-			members = await adService.getGuildMembers(guild);
+			members = await getGuildMembers(guild);
 		}
 
 		for (let item of formItems) {

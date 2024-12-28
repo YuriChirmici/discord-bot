@@ -300,3 +300,8 @@ const getFolderSize = module.exports.getFolderSize = async (folderPath) => {
 module.exports.deleteDuplicates = (arr) => {
 	return arr.filter((value, index, self) => self.indexOf(value) === index);
 };
+
+module.exports.getGuildMembers = async (guild) => {
+	const members = await guild.members.fetch();
+	return Array.from(members.values());
+};

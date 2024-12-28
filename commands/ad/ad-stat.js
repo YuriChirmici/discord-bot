@@ -1,7 +1,7 @@
 const {	SlashCommandBuilder, PermissionFlagsBits } = require("discord.js");
 const adService = require("../../services/ad");
 const configService = require("../../services/config");
-const { createEmbed } = require("../../services/helpers");
+const { createEmbed, getGuildMembers } = require("../../services/helpers");
 const localizationService = require("../../services/localization");
 
 const local = localizationService.getLocal();
@@ -29,7 +29,7 @@ module.exports = {
 
 		const guildId = interaction.member.guild.id;
 		const guild = await client.guilds.fetch(guildId);
-		const members = await adService.getGuildMembers(guild);
+		const members = await getGuildMembers(guild);
 		const stat = await adService.getStatistics(members);
 
 		const embeds = this.divideTextToEmbeds(stat);
