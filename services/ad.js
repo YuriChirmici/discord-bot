@@ -249,7 +249,7 @@ class Ad {
 	async processRatingRolesUpdate(interaction) {
 		const { resultText } = await gameAccountsService.updateRatingRoles(interaction);
 		const channel = await interaction.guild.channels.fetch(configService.ratingRoles.resultChannelId);
-		await sendLongMessage(channel, resultText);
+		await sendLongMessage(channel, resultText || "Успешно обновлено");
 	}
 
 }

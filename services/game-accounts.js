@@ -406,7 +406,7 @@ class GameAccounts {
 
 		this._checkPlayersListChanges(gameAccounts, errors);
 		this._checkMissingInDiscordAcc(gameAccounts, errors);
-		// this._checkMismatchEntryDate(gameAccounts, errors);
+		this._checkMismatchEntryDate(gameAccounts, errors);
 		this._checkMismatchRole(gameAccounts, errors);
 		this._checkMismatchSerialNumber(gameAccounts, errors);
 		this._checkMismatchRegiment(gameAccounts, errors);
