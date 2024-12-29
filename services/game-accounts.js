@@ -543,7 +543,10 @@ class GameAccounts {
 			item.errorType = CHECK_ERRORS.entryDateMismatch;
 			const name = `**${this.getDiscordFriendlyName(item.gameNickname)}**`;
 			errors.push({
-				message: `У игрока ${name} записана неверная дата вступления`,
+				message: [
+					`У игрока ${name} записана неверная дата вступления.`,
+					`Указана: ${item.sheetEntryDate} | Верная: ${item.siteEntryDate}`
+				].join(" "),
 				errorItems: [ item ],
 			});
 		});
