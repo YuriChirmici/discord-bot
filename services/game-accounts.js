@@ -76,7 +76,8 @@ class GameAccounts {
 				return;
 			}
 
-			if (acc.errorType === CHECK_ERRORS.missingInSite) {
+			const regiment = this.getRegimentById(acc.regimentId);
+			if (acc.errorType === CHECK_ERRORS.missingInSite || regiment?.isExcluded) {
 				addUnique(deactivateMembers, acc.member);
 			} else {
 				addUnique(activateMembers, acc.member);
@@ -183,7 +184,7 @@ class GameAccounts {
 		const rows = nicknamesCSV.split("\n");
 		const sheetStatsObj = {};
 
-		for (let i = 1; i < rows.length; i++) {
+		for (let i = 0; i < rows.length; i++) {
 			const parts = rows[i].split(",");
 			const sheetItemLetter = (parts[7] || "").trim();
 			const accountRegiment = this.getRegimentByLetter(sheetItemLetter);
