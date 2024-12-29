@@ -305,3 +305,25 @@ module.exports.getGuildMembers = async (guild) => {
 	const members = await guild.members.fetch();
 	return Array.from(members.values());
 };
+
+module.exports.sendLongMessage = async (channel, message, limit = 1990) => {
+	const rows = message.split("\n");
+	const chunks = [];
+	let chunk = "";
+	for (let row of rows) {
+		if (chunk.length + row.length > limit) {
+			chunks.push(chunk);
+			chunk = "";
+		}
+
+		chunk += row + "\n";
+	}
+
+	if (chunk.length) {
+		chunks.push(chunk);
+	}
+
+	for (let chunkMessage of chunks) {
+		await channel.send(chunkMessage);
+	}
+};

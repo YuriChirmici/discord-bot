@@ -1,6 +1,6 @@
 const configService = require("./config");
 const { Models } = require("../database");
-const { getButtonsFlat, getDateFormatted, getGuildMembers } = require("./helpers");
+const { getButtonsFlat, getDateFormatted, getGuildMembers, sendLongMessage } = require("./helpers");
 const gameAccountsService = require("./game-accounts");
 
 class Ad {
@@ -249,7 +249,7 @@ class Ad {
 	async processRatingRolesUpdate(interaction) {
 		const { resultText } = await gameAccountsService.updateRatingRoles(interaction);
 		const channel = await interaction.guild.channels.fetch(configService.ratingRoles.resultChannelId);
-		await channel.send(resultText);
+		await sendLongMessage(channel, resultText);
 	}
 
 }

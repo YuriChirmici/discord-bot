@@ -6,7 +6,6 @@
 	"database": {
 		"connectionLink": ""
 	},
-	"clanName": "",
 	"commandsPermission": "ManageRoles",
 	"voiceConnections": [
 		{
@@ -23,5 +22,39 @@
 		"savedFileMaxSizeMB": 10,
 		"savedFolderMaxSizeMB": 500
 	},
-	"sheetMembersChannelId": ""
+	"sheetMembersChannelId": "",
+	"regiments": [
+		{
+			"id": 1,
+			"name": "",
+			"sheetLetter": "A",
+			"shortName": "",
+			"shouldUpdateRatingRoles": true
+		},
+		{
+			"id": 2,
+			"name": "",
+			"shortName": "",
+			"sheetLetter": "B"
+		},
+		{
+			"id": 3,
+			"name": "",
+			"shortName": "",
+			"sheetLetter": "C"
+		},
+		{
+			"id": 4,
+			"name": "",
+			"shortName": "",
+			"sheetLetter": "Z"
+		},
+		{
+			"id": 999,
+			"name": "EXCLUDED",
+			"sheetLetter": "_",
+			"isExcluded": true
+		}
+	],
+	"inactiveRoles": []
 }

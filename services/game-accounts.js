@@ -2,19 +2,34 @@ const fs = require("fs");
 const path = require("path");
 const configService = require("./config");
 const { Models } = require("../database");
-const { getDomByUrl, setRoles, deleteDuplicates, getGuildMembers } = require("./helpers");
+const { getDomByUrl, setRoles, getGuildMembers } = require("./helpers");
 const profileService = require("./profile");
 
 const srcPath = path.join(__dirname, "../src");
 const nicknamesFilePath = path.join(srcPath, "nicknames.csv");
 
+const CHECK_ERRORS = {
+	missingInSheet: "missingInSheet",
+	missingInSite: "missingInSite",
+	changedNickname: "changedNickname",
+	missingInDiscord: "missingInDiscord",
+	entryDateMismatch: "entryDateMismatch",
+	roleMismatch: "roleMismatch",
+	serialNumberMismatch: "serialNumberMismatch",
+	regimentMismatch: "regimentMismatch",
+	membersSameSerialNumber: "membersSameSerialNumber",
+	memberDifferentSerialNumbers: "memberDifferentSerialNumbers",
+	changedDiscordName: "changedDiscordName",
+};
+
 class GameAccounts {
 	async updateRatingRoles(interaction) {
-		const [ siteStats, sheetStats, members, dbProfiles ] = await Promise.all([
-			this.getPlayersStats(),
+		const [ siteStats, sheetStats, members, dbProfiles, nicknameSlots ] = await Promise.all([
+			this.getSiteStats(),
 			this.getSheetStats(),
 			getGuildMembers(interaction.guild),
-			Models.Profile.find({ "sheetItem.serialNumber": { $exists: true } }).lean(), // TODO: get only needed profiles / fields ?
+			Models.Profile.find({ gameAccounts: { $exists: true } }).lean(),
+			Models.NicknameChannelSlot.find({ }).lean(),
 		]);
 
 		if (!siteStats || !sheetStats) {
@@ -22,7 +37,7 @@ class GameAccounts {
 			return { resultText };
 		}
 
-		const gameAccounts = this.prepareGameAccountsData(siteStats, sheetStats, members, dbProfiles);
+		const gameAccounts = this.prepareGameAccountsData(siteStats, sheetStats, members, dbProfiles, nicknameSlots);
 		const resultText = this.validateGameAccounts(gameAccounts);
 
 		const validGameAccounts = gameAccounts.filter((acc) => !acc.hasCheckError);
@@ -34,15 +49,99 @@ class GameAccounts {
 			groupedAccounts[acc.member.id].push(acc);
 		});
 
+		const nicknamesChannel = await interaction.guild.channels.fetch(configService.sheetMembersChannelId);
 		for (let key in groupedAccounts) {
-			await this._sendSheetMemberToChannel(interaction, groupedAccounts[key]);
+			const accountData = groupedAccounts[key];
+			await this._updateMemberInNicknamesChannel(interaction, accountData, nicknamesChannel, nicknameSlots);
+			await this._updateProfileWithGameAccountData(accountData);
 		}
+
+		await this._updateGameAccountsInactivity(gameAccounts, members);
 
 		return { resultText };
 	}
 
-	async getPlayersStats() {
-		const statDom = await getDomByUrl("https://warthunder.com/en/community/claninfo/" + encodeURIComponent(configService.clanName));
+	async _updateGameAccountsInactivity(gameAccounts, members) {
+		let activateMembers = [];
+		let deactivateMembers = [];
+
+		const addUnique = (arr, item) => {
+			if (!arr.includes(item)) {
+				arr.push(item);
+			}
+		};
+
+		gameAccounts.forEach((acc) => {
+			if (!acc.member) {
+				return;
+			}
+
+			if (acc.errorType === CHECK_ERRORS.missingInSite) {
+				addUnique(deactivateMembers, acc.member);
+			} else {
+				addUnique(activateMembers, acc.member);
+			}
+		});
+
+		const profiles = await Models.Profile.find({ gameAccounts: { $exists: true, $ne: [] } }).lean();
+
+		for (let profile of profiles) {
+			const member = members.find(({ id }) => id === profile.memberId);
+			if (!member) {
+				continue;
+			}
+
+			const isActive = !!profile.gameAccounts.find((acc) => {
+				const foundByNickname = gameAccounts.find(({ gameNickname, hasSiteStat }) =>
+					hasSiteStat && gameNickname === acc.nickname
+				);
+				if (foundByNickname) {
+					return true;
+				}
+
+				const foundByEntryDate = gameAccounts.filter(({ hasSiteStat, siteEntryDate, regimentId }) =>
+					hasSiteStat &&
+					siteEntryDate === acc.entryDate &&
+					regimentId === acc.regimentId
+				);
+
+				return foundByEntryDate.length === 1;
+			});
+
+			if (!isActive) {
+				addUnique(deactivateMembers, member);
+			}
+		}
+
+		deactivateMembers = deactivateMembers.filter((member) => !activateMembers.includes(member));
+
+		await Promise.all([
+			...activateMembers.map((member) => setRoles(member, [], configService.inactiveRoles)),
+			...deactivateMembers.map((member) => setRoles(member, configService.inactiveRoles, [])),
+		]);
+	}
+
+	async getSiteStats() {
+		const regimentsData = await Promise.all(
+			configService.regiments.map((regiment) => this._getSiteStats(regiment))
+		);
+
+		const hasMissingData = regimentsData.find((data) => !data);
+		if (hasMissingData) {
+			return;
+		}
+
+		const preparedRegimentsData = regimentsData.flat();
+
+		return preparedRegimentsData;
+	}
+
+	async _getSiteStats(regiment) {
+		if (regiment.isExcluded) {
+			return [];
+		}
+
+		const statDom = await getDomByUrl("https://warthunder.com/en/community/claninfo/" + encodeURIComponent(regiment.name));
 		const table = statDom.window.document.querySelector(".squadrons-members__table");
 		if (!table) {
 			return;
@@ -64,6 +163,7 @@ class GameAccounts {
 			data.push({
 				...dataIndex,
 				nickname: items[rowIndex + 1].textContent.trim().split("@")[0],
+				regimentId: regiment.id,
 			});
 		}
 
@@ -85,14 +185,15 @@ class GameAccounts {
 
 		for (let i = 1; i < rows.length; i++) {
 			const parts = rows[i].split(",");
-			const regType = (parts[7] || "").trim();
-			if (regType !== "A") {
+			const sheetItemLetter = (parts[7] || "").trim();
+			const accountRegiment = this.getRegimentByLetter(sheetItemLetter);
+			if (!accountRegiment) {
 				continue;
 			}
 
 			const discordName = parts[1].trim();
 			const gameNickname = parts[2].trim();
-			if (!discordName || !gameNickname) {
+			if (!discordName || !gameNickname) { // row is invalid
 				continue;
 			}
 
@@ -103,7 +204,7 @@ class GameAccounts {
 			sheetStatsObj[namePrepared] ||= [];
 			sheetStatsObj[namePrepared].push({
 				entryDate,
-				regType,
+				regimentId: accountRegiment.id,
 				number,
 				gameNickname,
 			});
@@ -117,44 +218,94 @@ class GameAccounts {
 		return sheetStatsArray;
 	}
 
-	async _sendSheetMemberToChannel(interaction, accountData) {
+	async _updateMemberInNicknamesChannel(interaction, accountData, nicknamesChannel, allDbSlots) {
 		const { member, profile, sheetNumber } = accountData[0];
-		const channelId = configService.sheetMembersChannelId;
-		if (!channelId || !member) {
-			return;
-		}
 
-		const compareTwoNicknameArrays = (arr1, arr2) => arr1.sort().join() === arr2.sort().join();
 		const gameNicknames = accountData.map(({ gameNickname }) => gameNickname);
 		const savedNicknames = (profile?.gameAccounts || []).map(({ nickname }) => nickname);
-		const hasNicknamesChanged = !compareTwoNicknameArrays(gameNicknames, savedNicknames);
+		const hasNicknamesChanges = !this._compareTwoNicknameArrays(gameNicknames, savedNicknames);
+		const existingSlot = allDbSlots.find(({ serialNumber }) => serialNumber == sheetNumber);
 
-		const oldMessageId = profile?.sheetItem?.messageId;
-		const userTag = `<@${member.user.id}>`;
-		const messageText = `${sheetNumber}. ${userTag} - ${gameNicknames.join(" | ")}`;
-		let message;
-		if (!oldMessageId) {
-			const channel = await interaction.guild.channels.fetch(channelId);
-			message = await channel.send(messageText);
-		} else if (hasNicknamesChanged) {
-			const channel = await interaction.guild.channels.fetch(profile.sheetItem.channelId);
-			message = await channel.messages.fetch(oldMessageId);
-			await message.edit(messageText);
+		const slotContent = `<@${member.user.id}> - ${gameNicknames.join(" | ")}`;
+		const messageText = this._prepareNicknameSlotMessage(sheetNumber, slotContent);
+
+		if (existingSlot?.memberId) {
+			if (existingSlot.memberId !== member.id) {
+				throw new Error(`Slot ${sheetNumber} is already taken by member: ${existingSlot.memberId}. New member: ${member.id}`);
+			}
+
+			if (hasNicknamesChanges) {
+				const channel = nicknamesChannel.id == existingSlot.channelId
+					? nicknamesChannel
+					: await interaction.guild.channels.fetch(existingSlot.channelId);
+				const message = await channel.messages.fetch(existingSlot.messageId);
+				try {
+					await message.edit(messageText);
+				} catch (err) {
+					logError(err);
+				}
+			}
+		} else if (existingSlot) {
+			const channel = nicknamesChannel.id == existingSlot.channelId
+				? nicknamesChannel
+				: await interaction.guild.channels.fetch(existingSlot.channelId);
+			const message = await channel.messages.fetch(existingSlot.messageId);
+			try {
+				await message.edit(messageText);
+			} catch (err) {
+				logError(err);
+			}
 		} else {
-			return;
+			await this.createNewNicknameSlot({
+				memberId: member.id,
+				serialNumber: sheetNumber,
+				channel: nicknamesChannel,
+				messageText,
+			});
 		}
+	}
+
+	async _updateProfileWithGameAccountData(accountData) {
+		const member = accountData[0].member;
 
 		await profileService.createOrUpdate(member.id, {
-			sheetItem: {
-				serialNumber: sheetNumber,
-				channelId: message.channel.id,
-				messageId: message.id,
-			},
-			gameAccounts: accountData.map(({ gameNickname, siteRating }) => ({
+			gameAccounts: accountData.map(({ gameNickname, siteRating, regimentId, siteEntryDate }) => ({
 				nickname: gameNickname,
+				entryDate: siteEntryDate,
 				lastSavedRating: siteRating,
+				regimentId,
 			})),
+			lastSheetDiscordName: member.user.username,
 		});
+	}
+
+	async createNewNicknameSlot({ memberId, serialNumber, channel, messageText }) {
+		const maxDBSlot = await Models.NicknameChannelSlot.findOne().sort({ serialNumber: -1 }).lean();
+		const maxDBNumber = maxDBSlot?.serialNumber || 0;
+		const channelId = channel.id;
+
+		for (let i = maxDBNumber + 1; i < serialNumber; i++) {
+			const emptySlotMessage = this._prepareNicknameSlotMessage(i);
+			const message = await channel.send(emptySlotMessage);
+			await Models.NicknameChannelSlot.create({
+				serialNumber: i,
+				channelId,
+				messageId: message.id
+			});
+		}
+
+		const message = await channel.send(messageText);
+
+		await Models.NicknameChannelSlot.create({
+			memberId,
+			serialNumber,
+			channelId,
+			messageId: message.id
+		});
+	}
+
+	_prepareNicknameSlotMessage(number, content = "") {
+		return `${number}. ${content}`.trim();
 	}
 
 	prepareRolesUpdateErrorText({ statSiteError, fileError }) {
@@ -170,21 +321,31 @@ class GameAccounts {
 		return message.trim();
 	}
 
-	prepareGameAccountsData(allSiteStats, allSheetStats, members, dbProfiles) {
+	prepareGameAccountsData(allSiteStats, allSheetStats, members, dbProfiles, nicknameSlots) {
 		const gameAccounts = [];
 
 		allSheetStats.forEach(({ discordName, sheetStats }) => {
-			const gameNicknames = sheetStats.map(({ gameNickname }) => gameNickname);
-			const siteStats = gameNicknames.map((nick) => allSiteStats.find((stat) => stat.nickname === nick)).filter(Boolean);
-			const foundMember = members.find((member) => member.user.username === discordName);
-			const foundProfile = foundMember ? dbProfiles.find(({ memberId }) => memberId === foundMember.id) : null;
+			const siteStatsForNicknames = sheetStats.map(({ gameNickname }) =>
+				allSiteStats.find((stat) => stat.nickname === gameNickname)
+			).filter(Boolean);
+			let foundMember = members.find((member) => member.user.username === discordName);
+			let foundProfile;
+			if (foundMember) {
+				foundProfile = dbProfiles.find(({ memberId }) => memberId == foundMember.id);
+			} else {
+				foundProfile = dbProfiles.find(({ lastSheetDiscordName }) => lastSheetDiscordName === discordName);
+				foundMember = members.find(({ id }) => id === foundProfile?.memberId);
+			}
+
+			const foundNicknameSlot = foundMember ? nicknameSlots.find(({ memberId }) => memberId == foundMember.id) : null;
 
 			(sheetStats || []).forEach((sheetStat) => {
-				const foundSiteStat = (siteStats || []).find(({ nickname }) => nickname === sheetStat.gameNickname);
+				const foundSiteStat = siteStatsForNicknames.find(({ nickname }) => nickname === sheetStat.gameNickname);
 				gameAccounts.push({
 					discordName,
 					member: foundMember,
 					profile: foundProfile,
+					nicknameSlot: foundNicknameSlot,
 					...this._prepareSheetGameAccountData(sheetStat),
 					...this._prepareSiteGameAccountData(foundSiteStat),
 				});
@@ -199,81 +360,140 @@ class GameAccounts {
 			}
 		});
 
+		// sort by sheet number ascending
+		gameAccounts.sort((a, b) => a.sheetNumber - b.sheetNumber);
+
 		return gameAccounts;
 	}
 
+	_prepareSheetGameAccountData(stat) {
+		if (!stat) {
+			return { hasSheetStat: false };
+		}
+
+		return {
+			hasSheetStat: true,
+			regimentId: stat.regimentId,
+			sheetRegimentId: stat.regimentId,
+			sheetEntryDate: stat.entryDate,
+			sheetNumber: stat.number,
+			gameNickname: stat.gameNickname,
+		};
+	}
+
+	_prepareSiteGameAccountData(stat) {
+		if (!stat) {
+			return { hasSiteStat: false };
+		}
+
+		return {
+			hasSiteStat: true,
+			regimentId: stat.regimentId,
+			siteRegimentId: stat.regimentId,
+			siteRating: stat.rating,
+			siteActivity: stat.activity,
+			siteEntryDate: stat.entryDate,
+			siteRole: stat.role,
+			gameNickname: stat.nickname,
+		};
+	}
+
+	// #region Checks
 	validateGameAccounts(gameAccounts) {
-		const errors = [
-			this._checkPlayersListChanges(gameAccounts),
-			this._checkMissingInDiscordAcc(gameAccounts),
-			this._checkMismatchEntryDate(gameAccounts),
-			this._checkMismatchRole(gameAccounts),
-			this._checkMismatchSerialNumber(gameAccounts),
-		];
+		const errors = [];
 
-		errors.forEach(({ errorItems }) => errorItems.forEach((item) => item.hasCheckError = true));
+		this._checkPlayersListChanges(gameAccounts, errors);
+		this._checkMissingInDiscordAcc(gameAccounts, errors);
+		this._checkMismatchEntryDate(gameAccounts, errors);
+		this._checkMismatchRole(gameAccounts, errors);
+		this._checkMismatchSerialNumber(gameAccounts, errors);
+		this._checkMismatchRegiment(gameAccounts, errors);
+		this._checkMembersSameSerialNumber(gameAccounts, errors);
+		this._checkMemberDifferentSerialNumbers(gameAccounts, errors);
+		this._checkChangedDiscordName(gameAccounts, errors);
 
-		let errorMessage = errors.map(({ message }) => message).filter(Boolean).join("\n\n");
+		// group errors by regiment id
+		const regimentErrors = {};
+		errors.forEach(({ errorItems, message }) => {
+			errorItems.forEach((item) => item.hasCheckError = true);
+			const regimentIds = errorItems.map(({ regimentId }) => regimentId);
+			regimentIds.forEach((id) => {
+				regimentErrors[id] ||= [];
+				if (!regimentErrors[id].includes(message)) {
+					// prevent duplicates
+					regimentErrors[id].push(message);
+				}
+			});
+		});
 
-		return errorMessage;
+		let resultMessage = "";
+		for (let id in regimentErrors) {
+			const regiment = this.getRegimentById(id);
+			const header = regiment.shortName || regiment.name;
+			const regimentErrorsList = regimentErrors[id].join("\n");
+			resultMessage += `**${header}**\n${regimentErrorsList}\n\n`;
+		}
+
+		return resultMessage.trim();
 	}
 
-	getDiscordFriendlyName(name) {
-		return name.replaceAll("_", "\\_");
-	}
-
-	_checkMissingInDiscordAcc(gameAccounts) {
-		const errorItems = gameAccounts.filter((acc) => acc.hasSheetStat && !acc.member);
-
-		const names = deleteDuplicates(errorItems.map(({ discordName }) => this.getDiscordFriendlyName(discordName)));
-		const errorMessage = names.map((name) => `Игрок ${name} не найден в Дискорде`);
-
-		return {
-			message: errorMessage.join("\n"),
-			errorItems,
-		};
-	}
-
-	_checkPlayersListChanges(gameAccounts) {
+	_checkPlayersListChanges(gameAccounts, errors) {
 		const { missingInSheetList, missingInSiteList, changedNicknameList } = this._getPlayersListChanges(gameAccounts);
-		let messages = [];
 
-		if (missingInSheetList.length) {
-			const names = deleteDuplicates(missingInSheetList.map(({ gameNickname }) => gameNickname));
-			messages.push(names.map((name) => `Игрок ${name} не найден в листе участников`).join("\n"));
-		}
+		missingInSheetList.forEach((item) => {
+			item.errorType = CHECK_ERRORS.missingInSheet;
+			const name = `**${this.getDiscordFriendlyName(item.gameNickname)}**`;
+			errors.push({
+				message: `Игрок ${name} не найден в листе участников`,
+				errorItems: [ item ],
+			});
+		});
 
-		if (missingInSiteList.length) {
-			messages.push(missingInSiteList.map((item) => {
-				const messageUrl = this._prepareSheetChannelMessage(item.profile?.sheetItem);
-				const userStr = messageUrl ? `[${item.gameNickname}](${messageUrl})` : item.gameNickname;
-				const savedRating = item.profile?.gameAccounts?.find(({ nickname }) => nickname === item.gameNickname)?.lastSavedRating;
-				return [
-					`Игрок ${userStr} покинул полк!`,
-					savedRating ? `ЛПР - ${savedRating}` : "",
-				].filter(Boolean).join(" ");
-			}).join("\n"));
-		}
+		missingInSiteList.forEach((item) => {
+			item.errorType = CHECK_ERRORS.missingInSite;
+			const messageUrl = this._prepareSlotChannelMessage(item.nicknameSlot);
+			const name = this.getDiscordFriendlyName(item.gameNickname);
+			const userStr = messageUrl ? `[${name}](${messageUrl})` : `**${name}**`;
 
-		if (changedNicknameList.length) {
-			messages.push(changedNicknameList.map(({ oldGameNickname, newGameNickname }) =>
-				`Вероятно игрок ${oldGameNickname} сменил ник на ${newGameNickname}`
-			).join("\n"));
-		}
+			const savedRating = item.profile?.gameAccounts?.find(
+				({ nickname }) => nickname === item.gameNickname
+			)?.lastSavedRating;
 
-		return {
-			message: messages.join("\n\n"),
-			errorItems: [ ...missingInSheetList, ...missingInSiteList, ...changedNicknameList ],
-		};
+			const message = [
+				`Игрок ${userStr} покинул полк`,
+				savedRating ? `ЛПР - ${savedRating}` : "",
+			].filter(Boolean).join(" ");
+
+			errors.push({
+				message,
+				errorItems: [ item ],
+			});
+		});
+
+		changedNicknameList.forEach((item) => {
+			item.errorType = CHECK_ERRORS.changedNickname;
+			const oldName = `**${this.getDiscordFriendlyName(item.oldGameNickname)}**`;
+			const newName = `**${this.getDiscordFriendlyName(item.newGameNickname)}**`;
+			errors.push({
+				message: `Вероятно игрок ${oldName} сменил ник на ${newName}`,
+				errorItems: [ item ],
+			});
+		});
 	}
 
 	_getPlayersListChanges(gameAccounts) {
 		let missingInSheetList = gameAccounts.filter((acc) => !acc.hasSheetStat && acc.hasSiteStat && acc.siteRole !== "Private");
-		let missingInSiteList = gameAccounts.filter((acc) => acc.hasSheetStat && !acc.hasSiteStat);
+		let missingInSiteList = gameAccounts.filter((acc) => {
+			const regiment = this.getRegimentById(acc.regimentId);
+			return acc.hasSheetStat && !acc.hasSiteStat && !regiment?.isExcluded;
+		});
 
 		// if site and sheet missing items have equal entry date, then probably it's a nickname change
 		const changedNicknameList = missingInSheetList.map((siteItem) => {
-			const sheetStats = missingInSiteList.filter((sheetItem) => siteItem.siteEntryDate === sheetItem.sheetEntryDate);
+			const sheetStats = missingInSiteList.filter((sheetItem) => (
+				siteItem.siteEntryDate === sheetItem.sheetEntryDate &&
+				sheetItem.regimentId === siteItem.regimentId
+			));
 			if (sheetStats.length !== 1) {
 				return;
 			}
@@ -315,94 +535,201 @@ class GameAccounts {
 		};
 	}
 
-	_checkMismatchEntryDate(gameAccounts) {
+	_checkMissingInDiscordAcc(gameAccounts, errors) {
+		const errorItems = gameAccounts.filter((acc) => acc.hasSheetStat && !acc.member);
+		errorItems.forEach((item) => {
+			item.errorType = CHECK_ERRORS.missingInDiscord;
+			const name = `**${this.getDiscordFriendlyName(item.discordName)}**`;
+			errors.push({
+				message: `Игрок ${name} не найден в Дискорде`,
+				errorItems: [ item ],
+			});
+		});
+	}
+
+	_checkMismatchEntryDate(gameAccounts, errors) {
 		const errorItems = gameAccounts.filter((acc) =>
 			acc.hasSheetStat && acc.hasSiteStat && acc.sheetEntryDate !== acc.siteEntryDate
 		);
 
-		const names = deleteDuplicates(errorItems.map(({ gameNickname }) => gameNickname));
-		const errorMessage = names.map((name) => `У игрока ${name} записана неверная дата вступления`);
-
-		return {
-			message: errorMessage.join("\n"),
-			errorItems,
-		};
+		errorItems.forEach((item) => {
+			item.errorType = CHECK_ERRORS.entryDateMismatch;
+			const name = `**${this.getDiscordFriendlyName(item.gameNickname)}**`;
+			errors.push({
+				message: `У игрока ${name} записана неверная дата вступления`,
+				errorItems: [ item ],
+			});
+		});
 	}
 
-	_checkMismatchRole(gameAccounts) {
+	_checkMismatchRole(gameAccounts, errors) {
 		const errorItems = gameAccounts.filter((acc) =>
 			acc.hasSheetStat && acc.hasSiteStat && acc.siteRole === "Private"
 		);
 
-		const names = deleteDuplicates(errorItems.map(({ gameNickname }) => gameNickname));
-		const errorMessage = names.map((name) => `Игроку ${name} не выдан сержант!`);
-
-		return {
-			message: errorMessage.join("\n"),
-			errorItems,
-		};
+		errorItems.forEach((item) => {
+			item.errorType = CHECK_ERRORS.roleMismatch;
+			const name = `**${this.getDiscordFriendlyName(item.gameNickname)}**`;
+			errors.push({
+				message: `Игроку ${name} не выдан сержант`,
+				errorItems: [ item ],
+			});
+		});
 	}
 
-	_checkMismatchSerialNumber(gameAccounts) {
+	_checkMismatchSerialNumber(gameAccounts, errors) {
 		const errorItems = gameAccounts.filter((acc) => {
-			const profileSerialNumber = acc.profile?.sheetItem?.serialNumber;
-			return acc.sheetNumber && profileSerialNumber && profileSerialNumber !== acc.sheetNumber;
+			const slotSerialNumber = acc.nicknameSlot?.serialNumber;
+			return acc.sheetNumber && slotSerialNumber && slotSerialNumber !== acc.sheetNumber;
 		});
 
-		const errorMessage = errorItems.map((item) => {
-			const messageUrl = this._prepareSheetChannelMessage(item.profile.sheetItem);
-			return `[${item.gameNickname}](${messageUrl}) имеет некорректный номер в листе пользователей`;
+		errorItems.forEach((item) => {
+			item.errorType = CHECK_ERRORS.serialNumberMismatch;
+			const messageUrl = this._prepareSlotChannelMessage(item.nicknameSlot);
+			errors.push({
+				message: `У игрока [${item.gameNickname}](${messageUrl}) номер в листе пользователей не совпадает с предыдущим`,
+				errorItems: [ item ],
+			});
 		});
-
-		return {
-			message: errorMessage.join("\n"),
-			errorItems,
-		};
 	}
 
-	_prepareSheetChannelMessage(sheetItem) {
-		if (!sheetItem) {
+	_checkMismatchRegiment(gameAccounts, errors) {
+		const errorItems = gameAccounts.filter((acc) =>
+			acc.hasSheetStat && acc.hasSiteStat && acc.siteRegimentId !== acc.sheetRegimentId
+		);
+
+		errorItems.forEach((item) => {
+			item.errorType = CHECK_ERRORS.regimentMismatch;
+			const name = `**${this.getDiscordFriendlyName(item.gameNickname)}**`;
+			errors.push({
+				message: `Игрок ${name} имеет некорректный полк в листе пользователей`,
+				errorItems: [ item ],
+			});
+		});
+	}
+
+	_checkMembersSameSerialNumber(gameAccounts, errors) {
+		const groupedByNumber = {};
+		gameAccounts
+			.filter((acc) => acc.sheetNumber)
+			.forEach((acc) => {
+				groupedByNumber[acc.sheetNumber] ||= [];
+				const arr = groupedByNumber[acc.sheetNumber];
+				const alreadyAddedMember = arr.find(({ discordName, member }) => {
+					if (member && acc.member) {
+						return member.id === acc.member.id;
+					} else {
+						return discordName === acc.discordName;
+					}
+				});
+				if (!alreadyAddedMember) {
+					arr.push(acc);
+				}
+			});
+
+		Object.values(groupedByNumber)
+			.filter((arr) => arr.length > 1)
+			.forEach((arr) => {
+				arr.forEach((item) => item.errorType = CHECK_ERRORS.membersSameSerialNumber);
+				const names = arr.map(({ member, gameNickname, discordName }) => {
+					if (member) {
+						return `<@${member.user.id}>`;
+					} else if (gameNickname || discordName) {
+						return `**${this.getDiscordFriendlyName(gameNickname || discordName)}**`;
+					} else {
+						return "";
+					}
+				}).join(", ");
+
+				const number = arr[0].sheetNumber;
+				errors.push({
+					message: `Игроки ${names} имеют одинаковые порядковые номера (${number}) в листе`,
+					errorItems: arr,
+				});
+			});
+	}
+
+	_checkMemberDifferentSerialNumbers(gameAccounts, errors) {
+		const groupedByDiscordName = {};
+		gameAccounts
+			.filter((acc) => acc.sheetNumber)
+			.forEach((acc) => {
+				const key = acc.member?.id || acc.discordName;
+				groupedByDiscordName[key] ||= [];
+				const arr = groupedByDiscordName[key];
+				if (!arr.find(({ sheetNumber }) => sheetNumber === acc.sheetNumber)) {
+					arr.push(acc);
+				}
+			});
+
+		Object.values(groupedByDiscordName)
+			.filter((arr) => arr.length > 1)
+			.forEach((arr) => {
+				arr.forEach((item) => item.errorType = CHECK_ERRORS.memberDifferentSerialNumbers);
+				const numbers = arr.map(({ sheetNumber }) => sheetNumber).join(", ");
+				let name = "";
+				const { member, gameNickname, discordName } = arr[0];
+				if (member) {
+					name = `<@${member.user.id}>`;
+				} else if (gameNickname || discordName) {
+					name = `**${this.getDiscordFriendlyName(gameNickname || discordName)}**`;
+				}
+
+				errors.push({
+					message: `Игрок ${name} имеет разные порядковые номера (${numbers}) в листе`,
+					errorItems: arr,
+				});
+			});
+	}
+
+	_checkChangedDiscordName(gameAccounts, errors) {
+		const errorItems = gameAccounts.filter((item) => {
+			const savedNickname = item.profile?.lastSheetDiscordName;
+			const currentNickname = item.member?.user?.username;
+			return currentNickname && savedNickname && currentNickname !== savedNickname;
+		});
+
+		errorItems.forEach((item) => {
+			item.errorType = CHECK_ERRORS.changedDiscordName;
+			const oldName = `**${this.getDiscordFriendlyName(item.profile.lastSheetDiscordName)}**`;
+			const newName = `**${this.getDiscordFriendlyName(item.member.user.username)}**`;
+			errors.push({
+				message: `Игрок ${oldName} сменил Дискорд никнейм на ${newName}`,
+				errorItems: [ item ],
+			});
+		});
+	}
+
+	getDiscordFriendlyName(name) {
+		return name.replaceAll("_", "\\_");
+	}
+
+	_prepareSlotChannelMessage(nicknameSlot) {
+		if (!nicknameSlot) {
 			return "";
 		}
 
-		const { channelId, messageId } = sheetItem;
+		const { channelId, messageId } = nicknameSlot;
 		const messageUrl = `https://discord.com/channels/${configService.guildId}/${channelId}/${messageId}`;
 		return messageUrl;
 	}
 
-	_prepareSheetGameAccountData(stat) {
-		if (!stat) {
-			return { hasSheetStat: false };
-		}
-
-		return {
-			hasSheetStat: true,
-			regType: stat.regType,
-			sheetEntryDate: stat.entryDate,
-			sheetNumber: stat.number,
-			gameNickname: stat.gameNickname,
-		};
+	getRegimentById(regimentId) {
+		return configService.regiments.find(({ id }) => id == regimentId);
 	}
 
-	_prepareSiteGameAccountData(stat) {
-		if (!stat) {
-			return { hasSiteStat: false };
-		}
-
-		return {
-			hasSiteStat: true,
-			siteRating: stat.rating,
-			siteActivity: stat.activity,
-			siteEntryDate: stat.entryDate,
-			siteRole: stat.role,
-			gameNickname: stat.nickname,
-		};
+	getRegimentByLetter(letter) {
+		return configService.regiments.find(({ sheetLetter }) => sheetLetter === letter);
 	}
 
 	async _updateRatingRoles(gameAccounts) {
 		const groupedAccounts = {};
 		gameAccounts
 			.filter((acc) => acc.member && acc.hasSiteStat && acc.siteRole !== "Private")
+			.filter(({ regimentId }) => {
+				const regiment = this.getRegimentById(regimentId);
+				return regiment?.shouldUpdateRatingRoles;
+			})
 			.forEach((acc) => {
 				groupedAccounts[acc.member.id] ||= [];
 				groupedAccounts[acc.member.id].push(acc);
@@ -434,6 +761,10 @@ class GameAccounts {
 		}
 
 		return roles;
+	}
+
+	_compareTwoNicknameArrays(arr1 = [], arr2 = []) {
+		return arr1.sort().join() === arr2.sort().join();
 	}
 }
 

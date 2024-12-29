@@ -13,8 +13,11 @@ const ProfileSchema = new mongoose.Schema({
 	gameAccounts: [ {
 		_id: false,
 		nickname: String,
+		entryDate: String,
 		lastSavedRating: Number,
+		regimentId: Number,
 	} ],
+	lastSheetDiscordName: String,
 	dateCreated: { type: Date, default: new Date() }
 }).index({ memberId: 1 });
 
