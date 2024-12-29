@@ -162,7 +162,7 @@ class GameAccounts {
 			Object.keys(dataIndex).forEach((key) => dataIndex[key] = items[rowIndex + dataIndex[key]].textContent.trim());
 			data.push({
 				...dataIndex,
-				nickname: items[rowIndex + 1].textContent.trim().split("@")[0],
+				nickname: items[rowIndex + 1].textContent.trim().replace(/\s+/g, " ").split("@")[0],
 				regimentId: regiment.id,
 			});
 		}
@@ -197,13 +197,13 @@ class GameAccounts {
 				continue;
 			}
 
-			const entryDate = parts[4].trim();
+			const [ entryDate, sheetSiteEntryDate ] = parts[4].trim().split("/").map((part) => part.trim());
 			const number = Number.parseInt(parts[0].trim());
 
 			const namePrepared = discordName[0] === "@" ? discordName.substring(1) : discordName;
 			sheetStatsObj[namePrepared] ||= [];
 			sheetStatsObj[namePrepared].push({
-				entryDate,
+				entryDate: sheetSiteEntryDate || entryDate, // sheetSiteEntryDate uses if game entry date and site entry date are different
 				regimentId: accountRegiment.id,
 				number,
 				gameNickname,
@@ -226,7 +226,8 @@ class GameAccounts {
 		const hasNicknamesChanges = !this._compareTwoNicknameArrays(gameNicknames, savedNicknames);
 		const existingSlot = allDbSlots.find(({ serialNumber }) => serialNumber == sheetNumber);
 
-		const slotContent = `<@${member.user.id}> - ${gameNicknames.join(" | ")}`;
+		const nicknamesText = gameNicknames.map((name) => this.getDiscordFriendlyName(name)).join(" | ");
+		const slotContent = `<@${member.user.id}> - ${nicknamesText}`;
 		const messageText = this._prepareNicknameSlotMessage(sheetNumber, slotContent);
 
 		if (existingSlot?.memberId) {
