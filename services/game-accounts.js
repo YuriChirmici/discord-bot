@@ -84,32 +84,16 @@ class GameAccounts {
 			}
 		});
 
-		const profiles = await Models.Profile.find({ gameAccounts: { $exists: true, $ne: [] } }).lean();
+		const activeMembersIds = activateMembers.map(({ id }) => id);
+
+		const profiles = await Models.Profile.find({
+			gameAccounts: { $exists: true, $ne: [] },
+			memberId: { $nin: activeMembersIds }
+		}).lean();
 
 		for (let profile of profiles) {
 			const member = members.find(({ id }) => id === profile.memberId);
-			if (!member) {
-				continue;
-			}
-
-			const isActive = !!profile.gameAccounts.find((acc) => {
-				const foundByNickname = gameAccounts.find(({ gameNickname, hasSiteStat }) =>
-					hasSiteStat && gameNickname === acc.nickname
-				);
-				if (foundByNickname) {
-					return true;
-				}
-
-				const foundByEntryDate = gameAccounts.filter(({ hasSiteStat, siteEntryDate, regimentId }) =>
-					hasSiteStat &&
-					siteEntryDate === acc.entryDate &&
-					regimentId === acc.regimentId
-				);
-
-				return foundByEntryDate.length === 1;
-			});
-
-			if (!isActive) {
+			if (member) {
 				addUnique(deactivateMembers, member);
 			}
 		}
@@ -252,6 +236,7 @@ class GameAccounts {
 				? nicknamesChannel
 				: await interaction.guild.channels.fetch(existingSlot.channelId);
 			const message = await channel.messages.fetch(existingSlot.messageId);
+			await Models.NicknameChannelSlot.updateOne({ _id: existingSlot._id }, { memberId: member.id });
 			try {
 				await message.edit(messageText);
 			} catch (err) {
@@ -477,7 +462,7 @@ class GameAccounts {
 			const oldName = `**${this.getDiscordFriendlyName(item.oldGameNickname)}**`;
 			const newName = `**${this.getDiscordFriendlyName(item.newGameNickname)}**`;
 			errors.push({
-				message: `Вероятно игрок ${oldName} сменил ник на ${newName}`,
+				message: `Вероятно, игрок ${oldName} сменил ник на ${newName}`,
 				errorItems: [ item ],
 			});
 		});
@@ -686,9 +671,8 @@ class GameAccounts {
 
 	_checkChangedDiscordName(gameAccounts, errors) {
 		const errorItems = gameAccounts.filter((item) => {
-			const savedNickname = item.profile?.lastSheetDiscordName;
 			const currentNickname = item.member?.user?.username;
-			return currentNickname && savedNickname && currentNickname !== savedNickname;
+			return currentNickname && item.discordName && currentNickname !== item.discordName;
 		});
 
 		errorItems.forEach((item) => {
