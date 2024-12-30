@@ -327,3 +327,16 @@ module.exports.sendLongMessage = async (channel, message, limit = 1990) => {
 		await channel.send(chunkMessage);
 	}
 };
+
+module.exports.getNextIntervalDate = (intervalMs) => {
+	const now = new Date();
+	const startOfDay = new Date(now);
+	startOfDay.setHours(0, 0, 0, 0);
+
+	const elapsedMs = now - startOfDay;
+	const nextIntervalMs = Math.ceil(elapsedMs / intervalMs) * intervalMs;
+
+	const nextDate = new Date(startOfDay.getTime() + nextIntervalMs);
+
+	return nextDate;
+};

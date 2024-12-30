@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const configService = require("./config");
 const { Models } = require("../database");
-const { getDomByUrl, setRoles, getGuildMembers } = require("./helpers");
+const { getDomByUrl, setRoles, getGuildMembers, getNextIntervalDate, sendLongMessage } = require("./helpers");
 const profileService = require("./profile");
 
 const srcPath = path.join(__dirname, "../src");
@@ -23,11 +23,17 @@ const CHECK_ERRORS = {
 };
 
 class GameAccounts {
-	async updateRatingRoles(interaction) {
+	constructor() {
+		this.checkMembersListTaskName = "checkMembersList";
+		this.listAutoCheckPeriod = 4 * 60 * 60 * 1000; // 4 hours
+		this.lastListAutoCheckMessage = "";
+	}
+
+	async checkMembersAndUpdateRatingRoles(guild, isAutoCheck) {
 		const [ siteStats, sheetStats, members, dbProfiles, nicknameSlots ] = await Promise.all([
 			this.getSiteStats(),
 			this.getSheetStats(),
-			getGuildMembers(interaction.guild),
+			getGuildMembers(guild),
 			Models.Profile.find({ gameAccounts: { $exists: true } }).lean(),
 			Models.NicknameChannelSlot.find({ }).lean(),
 		]);
@@ -41,7 +47,9 @@ class GameAccounts {
 		const resultText = this.validateGameAccounts(gameAccounts);
 
 		const validGameAccounts = gameAccounts.filter((acc) => !acc.hasCheckError);
-		await this._updateRatingRoles(validGameAccounts);
+		if (!isAutoCheck) {
+			await this._updateRatingRoles(validGameAccounts);
+		}
 
 		const groupedAccounts = {}; // group by discord acc
 		validGameAccounts.filter((acc) => acc.member).forEach((acc) => {
@@ -49,10 +57,10 @@ class GameAccounts {
 			groupedAccounts[acc.member.id].push(acc);
 		});
 
-		const nicknamesChannel = await interaction.guild.channels.fetch(configService.sheetMembersChannelId);
+		const nicknamesChannel = await guild.channels.fetch(configService.sheetMembersChannelId);
 		for (let key in groupedAccounts) {
 			const accountData = groupedAccounts[key];
-			await this._updateMemberInNicknamesChannel(interaction, accountData, nicknamesChannel, nicknameSlots);
+			await this._updateMemberInNicknamesChannel(guild, accountData, nicknamesChannel, nicknameSlots);
 			await this._updateProfileWithGameAccountData(accountData);
 		}
 
@@ -203,7 +211,7 @@ class GameAccounts {
 		return sheetStatsArray;
 	}
 
-	async _updateMemberInNicknamesChannel(interaction, accountData, nicknamesChannel, allDbSlots) {
+	async _updateMemberInNicknamesChannel(guild, accountData, nicknamesChannel, allDbSlots) {
 		const { member, profile, sheetNumber } = accountData[0];
 
 		const gameNicknames = accountData.map(({ gameNickname }) => gameNickname);
@@ -223,7 +231,7 @@ class GameAccounts {
 			if (hasNicknamesChanges) {
 				const channel = nicknamesChannel.id == existingSlot.channelId
 					? nicknamesChannel
-					: await interaction.guild.channels.fetch(existingSlot.channelId);
+					: await guild.channels.fetch(existingSlot.channelId);
 				const message = await channel.messages.fetch(existingSlot.messageId);
 				try {
 					await message.edit(messageText);
@@ -234,7 +242,7 @@ class GameAccounts {
 		} else if (existingSlot) {
 			const channel = nicknamesChannel.id == existingSlot.channelId
 				? nicknamesChannel
-				: await interaction.guild.channels.fetch(existingSlot.channelId);
+				: await guild.channels.fetch(existingSlot.channelId);
 			const message = await channel.messages.fetch(existingSlot.messageId);
 			await Models.NicknameChannelSlot.updateOne({ _id: existingSlot._id }, { memberId: member.id });
 			try {
@@ -754,6 +762,49 @@ class GameAccounts {
 
 	_compareTwoNicknameArrays(arr1 = [], arr2 = []) {
 		return arr1.sort().join() === arr2.sort().join();
+	}
+
+	async updateListAutoCheckTask() {
+		const name = this.checkMembersListTaskName;
+		const period = this.listAutoCheckPeriod;
+		const task = {
+			name,
+			executionDate: getNextIntervalDate(period),
+			period,
+		};
+
+		await Models.Scheduler.updateOne({ name }, task, { upsert: true });
+	}
+
+	async runListCheckTask(client) {
+		const guild = await client.guilds.fetch(configService.guildId);
+		const { resultText } = await this.checkMembersAndUpdateRatingRoles(guild, true);
+		if (!resultText || this.lastListAutoCheckMessage === resultText) {
+			return;
+		}
+
+		const systemText = this._prepareAutoCheckSystemMessage();
+		const messageText = `${systemText}\n\n${resultText}`;
+
+		const channel = await guild.channels.fetch(configService.ratingRoles.resultChannelId);
+		await sendLongMessage(channel, messageText);
+
+		this.lastListAutoCheckMessage = resultText;
+	}
+
+	_prepareAutoCheckSystemMessage() {
+		const period = this.listAutoCheckPeriod;
+		const hours = Math.floor(period / 1000 / 60 / 60);
+		const minutes = Math.floor((period - hours * 60 * 60 * 1000) / 1000 / 60);
+
+		const periodFriendlyText = [
+			hours ? `${hours} ч.` : "",
+			minutes ? `${minutes} м.` : "",
+		].filter(Boolean).join(" ");
+
+		const systemText = `Авто проверка аккаунтов. Следующая проверка через ${periodFriendlyText}`;
+
+		return systemText;
 	}
 }
 
