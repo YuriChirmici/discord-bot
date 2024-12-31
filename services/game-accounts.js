@@ -448,7 +448,7 @@ class GameAccounts {
 			item.errorType = CHECK_ERRORS.missingInSite;
 			const messageUrl = this._prepareSlotChannelMessage(item.nicknameSlot);
 			const name = this.getDiscordFriendlyName(item.gameNickname);
-			const userStr = messageUrl ? `[${name}](${messageUrl})` : `**${name}**`;
+			const userStr = messageUrl ? `[${item.gameNickname}](${messageUrl})` : `**${name}**`;
 
 			const savedRating = item.profile?.gameAccounts?.find(
 				({ nickname }) => nickname === item.gameNickname
