@@ -8,9 +8,10 @@ class TempVoiceService {
 		this.defaultBotPermissions = [ "ManageChannels", "ViewChannel", "Connect", "ManageRoles" ];
 	}
 
-	async joinChannel({ client, state }) {
-		const guild = await client.guilds.fetch(state.guild.id);
-		const connection = configService.voiceConnections.find(({ channelId }) => channelId === state.channelId);
+	async joinChannel({ state }) {
+		const guild = state.guild;
+		const creatingChannelId = state.channelId;
+		const connection = configService.voiceConnections.find(({ channelId }) => channelId === creatingChannelId);
 		if (!connection) {
 			return;
 		}
@@ -18,7 +19,7 @@ class TempVoiceService {
 		const memberId = state.member.id;
 		const categoryId = connection.categoryId;
 
-		let savedSettings = (await this.getSavedSettings({ categoryId, memberId })) || {
+		let savedSettings = (await this.getSavedSettings({ creatingChannelId, memberId })) || {
 			name: connection.channelName,
 			userLimit: 10,
 			permissions: []
@@ -37,7 +38,7 @@ class TempVoiceService {
 
 		await Promise.all([
 			state.member.voice.setChannel(channel),
-			Models.TempVoiceChannel.create({ channelId: channel.id, ownerId: memberId }),
+			Models.TempVoiceChannel.create({ channelId: channel.id, ownerId: memberId, creatingChannelId }),
 		]);
 
 		await channel.permissionOverwrites.set(permissionOverwrites);
@@ -78,27 +79,28 @@ class TempVoiceService {
 
 		const dbChannel = await Models.TempVoiceChannel.findOne({ channelId: channel.id });
 		if (dbChannel?.ownerId === state.member.id) {
-			await this.saveMemberSettings(channel, connection.categoryId);
+			await this.saveMemberSettings(dbChannel, channel);
 		}
 
 		if (channel.members.size === 0) {
 			try {
 				await channel.delete();
-			} catch (err) { }
+			} catch (err) {
+				console.log(err);
+			}
 		}
 	};
 
-	async saveMemberSettings(channel, categoryId) {
-		const dbChannel = await Models.TempVoiceChannel.findOne({ channelId: channel.id });
-		if (!dbChannel) {
-			return;
-		}
-
-		await Models.TempVoiceMemberSettings.deleteMany({ categoryId, memberId: dbChannel.ownerId });
+	async saveMemberSettings(dbChannel, channel) {
+		const creatingChannelId = dbChannel.creatingChannelId;
+		await Models.TempVoiceMemberSettings.deleteMany({
+			creatingChannelId,
+			memberId: dbChannel.ownerId
+		});
 
 		const data = {
+			creatingChannelId,
 			memberId: dbChannel.ownerId,
-			categoryId,
 			name: channel.name,
 			userLimit: channel.userLimit,
 			rtcRegion: channel.rtcRegion,
@@ -117,8 +119,11 @@ class TempVoiceService {
 		}));
 	}
 
-	async getSavedSettings({ categoryId, memberId }) {
-		const savedSettings = await Models.TempVoiceMemberSettings.findOne({ categoryId, memberId }).lean();
+	async getSavedSettings({ creatingChannelId, memberId }) {
+		const savedSettings = await Models.TempVoiceMemberSettings.findOne({
+			creatingChannelId,
+			memberId
+		}).lean();
 		(savedSettings?.permissions || []).forEach((item) => item.id = item.itemId);
 
 		return savedSettings;

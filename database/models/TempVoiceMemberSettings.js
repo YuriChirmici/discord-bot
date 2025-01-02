@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 
 const TempVoiceMemberSettingsSchema = new mongoose.Schema({
-	categoryId:	String,
+	creatingChannelId: String,
 	memberId:	String,
 	name: 		String,
 	userLimit: 	Number,
@@ -13,6 +13,6 @@ const TempVoiceMemberSettingsSchema = new mongoose.Schema({
 		allow: 	[ String ],
 		deny: 	[ String ],
 	} ],
-}).index({ categoryId: 1, memberId: 1 }, { unique: true });
+}).index({ creatingChannelId: 1, memberId: 1 }, { unique: true });
 
 module.exports = mongoose.model("TempVoiceMemberSettings", TempVoiceMemberSettingsSchema);
