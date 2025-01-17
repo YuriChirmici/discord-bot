@@ -388,7 +388,7 @@ class GameAccounts {
 			siteRating: stat.rating,
 			siteActivity: stat.activity,
 			siteEntryDate: stat.entryDate,
-			siteRole: stat.role,
+			isSitePrivate: [ "Private", "clan/regular" ].includes(stat.role),
 			gameNickname: stat.nickname,
 		};
 	}
@@ -477,7 +477,7 @@ class GameAccounts {
 	}
 
 	_getPlayersListChanges(gameAccounts) {
-		let missingInSheetList = gameAccounts.filter((acc) => !acc.hasSheetStat && acc.hasSiteStat && acc.siteRole !== "Private");
+		let missingInSheetList = gameAccounts.filter((acc) => !acc.hasSheetStat && acc.hasSiteStat && !acc.isSitePrivate);
 		let missingInSiteList = gameAccounts.filter((acc) => {
 			const regiment = this.getRegimentById(acc.regimentId);
 			return acc.hasSheetStat && !acc.hasSiteStat && !regiment?.isExcluded;
@@ -562,7 +562,7 @@ class GameAccounts {
 
 	_checkMismatchRole(gameAccounts, errors) {
 		const errorItems = gameAccounts.filter((acc) =>
-			acc.hasSheetStat && acc.hasSiteStat && acc.siteRole === "Private"
+			acc.hasSheetStat && acc.hasSiteStat && acc.isSitePrivate
 		);
 
 		errorItems.forEach((item) => {
@@ -722,7 +722,7 @@ class GameAccounts {
 	async _updateRatingRoles(gameAccounts) {
 		const groupedAccounts = {};
 		gameAccounts
-			.filter((acc) => acc.member && acc.hasSiteStat && acc.siteRole !== "Private")
+			.filter((acc) => acc.member && acc.hasSiteStat && !acc.isSitePrivate)
 			.filter(({ regimentId }) => {
 				const regiment = this.getRegimentById(regimentId);
 				return regiment?.shouldUpdateRatingRoles;
