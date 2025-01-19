@@ -51,7 +51,9 @@ const processTask = async (task, client) => {
 			await Models.Scheduler.deleteOne({ _id: task._id });
 		}
 	} catch (err) {
-		logError("Error executing scheduler task, " + JSON.stringify(task) + "\n" + err);
+		const errMessage = `${err?.message || "err"}\n${err?.stack || ""}`;
+		const message = `Error executing scheduler task, ${JSON.stringify(task)}\n${errMessage}`;
+		logError(message.trim());
 	}
 };
 

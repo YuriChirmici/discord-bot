@@ -119,8 +119,8 @@ class GameAccounts {
 			configService.regiments.map((regiment) => this._getSiteStats(regiment))
 		);
 
-		const hasMissingData = regimentsData.find((data) => !data);
-		if (hasMissingData) {
+		const hasMissingRegimentData = regimentsData.some((data) => !data);
+		if (hasMissingRegimentData) {
 			return;
 		}
 
@@ -135,7 +135,7 @@ class GameAccounts {
 		}
 
 		const statDom = await getDomByUrl("https://warthunder.com/en/community/claninfo/" + encodeURIComponent(regiment.name));
-		const table = statDom.window.document.querySelector(".squadrons-members__table");
+		const table = statDom.window.document.querySelector(".squadrons-members");
 		if (!table) {
 			return;
 		}
