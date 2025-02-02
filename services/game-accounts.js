@@ -48,7 +48,7 @@ class GameAccounts {
 	}
 
 	async _checkMembersAndUpdateRatingRoles(guild, isAutoCheck) {
-		const [ siteStats, sheetStats, members, dbProfiles, nicknameSlots ] = await Promise.all([
+		const [ siteStats, sheetStatsData, members, dbProfiles, nicknameSlots ] = await Promise.all([
 			this.getSiteStats(),
 			this.getSheetStats(),
 			getGuildMembers(guild),
@@ -56,10 +56,15 @@ class GameAccounts {
 			Models.NicknameChannelSlot.find({ }).lean(),
 		]);
 
-		if (!siteStats || !sheetStats) {
-			const resultText = this.prepareRolesUpdateErrorText({ statSiteError: !siteStats, fileError: !sheetStats });
-			return { resultText };
+		if (!siteStats) {
+			return { resultText: this.prepareRolesUpdateErrorText({ statSiteError: true }) };
 		}
+
+		if (!sheetStatsData?.stats?.length) {
+			return { resultText: this.prepareRolesUpdateErrorText({ fileError: true, details: sheetStatsData?.error }) };
+		}
+
+		const sheetStats = sheetStatsData.stats || [];
 
 		const gameAccounts = this.prepareGameAccountsData(siteStats, sheetStats, members, dbProfiles, nicknameSlots);
 		const resultText = this.validateGameAccounts(gameAccounts);
@@ -183,12 +188,12 @@ class GameAccounts {
 
 	async getSheetStats() {
 		if (!fs.existsSync(nicknamesFilePath)) {
-			return;
+			return { error: "Файл не найден" };
 		}
 
 		const nicknamesCSV = await fs.promises.readFile(nicknamesFilePath, "utf-8");
 		if (!nicknamesCSV) {
-			return;
+			return { error: "Файл пустой" };
 		}
 
 		const rows = nicknamesCSV.split("\n");
@@ -209,7 +214,11 @@ class GameAccounts {
 			}
 
 			const [ entryDate, sheetSiteEntryDate ] = parts[4].trim().split("/").map((part) => part.trim());
-			const number = Number.parseInt(parts[0].trim());
+			const numberRaw = parts[0].trim();
+			const number = Number(numberRaw);
+			if (!numberRaw || !Number.isInteger(number) || number < 1) {
+				return { error: `Порядковый номер "${numberRaw}" не является натуральным числом` };
+			}
 
 			const namePrepared = discordName[0] === "@" ? discordName.substring(1) : discordName;
 			sheetStatsObj[namePrepared] ||= [];
@@ -226,7 +235,7 @@ class GameAccounts {
 			sheetStats,
 		}));
 
-		return sheetStatsArray;
+		return { stats: sheetStatsArray };
 	}
 
 	async _updateMemberInNicknamesChannel(guild, accountData, nicknamesChannel, allDbSlots) {
@@ -332,7 +341,7 @@ class GameAccounts {
 		return `${number}. ${content}`.trim();
 	}
 
-	prepareRolesUpdateErrorText({ statSiteError, fileError }) {
+	prepareRolesUpdateErrorText({ statSiteError, fileError, details }) {
 		let message = "Ошибка обновления рейтинговых ролей. Причина:\n";
 		if (statSiteError) {
 			message += "Ошибка сайта\n";
@@ -340,6 +349,10 @@ class GameAccounts {
 
 		if (fileError) {
 			message += "Ошибка файла\n";
+		}
+
+		if (details) {
+			message += `Детали: ${details}\n`;
 		}
 
 		return message.trim();
