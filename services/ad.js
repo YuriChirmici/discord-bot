@@ -11,8 +11,8 @@ class Ad {
 		this.commandsConfigName = "memberCommands";
 	}
 
-	async changeRoleButton({ member, adConfig, buttonIndex }) {
-		let roleCleared = false;
+	getRoleButtonClickData({ member, adConfig, buttonIndex }) {
+		let rolesCleared = false;
 		const rolesForAdd = [];
 		const rolesForRemove = [];
 		const configButtons = getButtonsFlat(adConfig.buttons);
@@ -23,7 +23,7 @@ class Ad {
 			if (buttonIndex === i) {
 				if (hasRoles) {
 					rolesForRemove.push(...rolesAdd);
-					roleCleared = true;
+					rolesCleared = true;
 				} else {
 					rolesForAdd.push(...rolesAdd);
 				}
@@ -32,15 +32,7 @@ class Ad {
 			}
 		}
 
-		if (rolesForRemove.length) {
-			await member.roles.remove(rolesForRemove);
-		}
-
-		if (rolesForAdd.length) {
-			await member.roles.add(rolesForAdd);
-		}
-
-		return roleCleared;
+		return { rolesCleared, rolesForAdd, rolesForRemove };
 	}
 
 	// for attendance ad

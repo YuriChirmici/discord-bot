@@ -2,7 +2,7 @@ const { SlashCommandBuilder, PermissionFlagsBits } = require("discord.js");
 const adService = require("../../services/ad");
 const configService = require("../../services/config");
 const { Models } = require("../../database");
-const { createButtons, createSelect, getButtonsFlat, createEmbed } = require("../../services/helpers");
+const { createButtons, createSelect, getButtonsFlat, createEmbed, setRoles } = require("../../services/helpers");
 const customIdService = require("../../services/custom-id");
 const memberCommandsService = require("../../services/member-commands");
 const localizationService = require("../../services/localization");
@@ -195,16 +195,15 @@ module.exports = {
 		const buttonConfig = getButtonsFlat(adConfig.buttons)[buttonIndex];
 		const member = interaction.member;
 
-		const rolesCleared = await adService.changeRoleButton({ member, adConfig, buttonIndex });
-
-		const guildRoles = await member.guild.roles.fetch();
-		const roles = Array.from(guildRoles.filter(({ id }) => buttonConfig.rolesAdd.includes(id)).values());
-		let message = this._prepareButtonReply(roles, adConfig, rolesCleared);
+		const { rolesCleared, rolesForAdd, rolesForRemove } = adService.getRoleButtonClickData({ member, adConfig, buttonIndex });
+		let message = this._prepareButtonReply(buttonConfig.rolesAdd, adConfig, rolesCleared);
 
 		await interaction.reply({
 			content: message,
 			ephemeral: true
 		});
+
+		await setRoles(member, rolesForAdd, rolesForRemove);
 
 		if (adConfig.resultChannelId) {
 			const channel = await interaction.guild.channels.fetch(adConfig.resultChannelId);
@@ -214,7 +213,7 @@ module.exports = {
 	},
 
 	_prepareButtonReply(roles, adConfig, rolesCleared) {
-		const rolesString = roles.map(({ id }) => `<@&${id}>`).join(", ");
+		const rolesString = roles.map((id) => `<@&${id}>`).join(", ");
 		let message;
 		if (rolesCleared) {
 			if (roles.length > 1) {
