@@ -22,6 +22,11 @@ const CHECK_ERRORS = {
 	changedDiscordName: "changedDiscordName",
 };
 
+const CUSTOM_ERRORS = {
+	serialNumberTaken: "serialNumberTaken",
+	serialNumberTooFar: "serialNumberTooFar",
+};
+
 class GameAccounts {
 	constructor() {
 		this.checkMembersListTaskName = "checkMembersList";
@@ -30,6 +35,19 @@ class GameAccounts {
 	}
 
 	async checkMembersAndUpdateRatingRoles(guild, isAutoCheck) {
+		try {
+			return await this._checkMembersAndUpdateRatingRoles(guild, isAutoCheck);
+		} catch (err) {
+			if ([ CUSTOM_ERRORS.serialNumberTaken, CUSTOM_ERRORS.serialNumberTooFar ].includes(err.type)) {
+				return { resultText: err.message };
+			}
+
+			logError(err);
+			return { resultText: "Возникла непредвиденная ошибка" };
+		}
+	}
+
+	async _checkMembersAndUpdateRatingRoles(guild, isAutoCheck) {
 		const [ siteStats, sheetStats, members, dbProfiles, nicknameSlots ] = await Promise.all([
 			this.getSiteStats(),
 			this.getSheetStats(),
@@ -278,6 +296,17 @@ class GameAccounts {
 		const maxDBSlot = await Models.NicknameChannelSlot.findOne().sort({ serialNumber: -1 }).lean();
 		const maxDBNumber = maxDBSlot?.serialNumber || 0;
 		const channelId = channel.id;
+
+		const emptySlotsCount = serialNumber - maxDBNumber - 1;
+		if (serialNumber <= maxDBNumber) {
+			const error = new Error(`Порядковый номер "${serialNumber}" уже занят`);
+			error.type = CUSTOM_ERRORS.serialNumberTaken;
+			throw error;
+		} else if (emptySlotsCount > 10) {
+			const error = new Error(`Порядковый номер "${serialNumber}" слишком далеко от предыдущего слота "${maxDBNumber}"`);
+			error.type = CUSTOM_ERRORS.serialNumberTooFar;
+			throw error;
+		}
 
 		for (let i = maxDBNumber + 1; i < serialNumber; i++) {
 			const emptySlotMessage = this._prepareNicknameSlotMessage(i);
@@ -584,8 +613,9 @@ class GameAccounts {
 		errorItems.forEach((item) => {
 			item.errorType = CHECK_ERRORS.serialNumberMismatch;
 			const messageUrl = this._prepareSlotChannelMessage(item.nicknameSlot);
+			const numbersString = `${item.nicknameSlot.serialNumber}, ${item.sheetNumber}`;
 			errors.push({
-				message: `У игрока [${item.gameNickname}](${messageUrl}) номер в листе пользователей не совпадает с предыдущим`,
+				message: `У игрока [${item.gameNickname}](${messageUrl}) номер в листе пользователей не совпадает с предыдущим (${numbersString})`,
 				errorItems: [ item ],
 			});
 		});
@@ -696,6 +726,8 @@ class GameAccounts {
 			});
 		});
 	}
+
+	// #region Checks End
 
 	getDiscordFriendlyName(name) {
 		return name.replaceAll("_", "\\_");
