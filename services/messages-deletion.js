@@ -23,8 +23,16 @@ class MessagesDeletionService {
 
 		const { rolesExceptions = [] } = configService.deletedMessagesLogging;
 		if (rolesExceptions.length) {
-			const member = await guild.members.fetch(memberId);
-			const hasExceptionRoles = !!member.roles.cache.find(r => rolesExceptions.includes(r.id));
+			let member;
+			try {
+				member = await guild.members.fetch(memberId);
+			} catch (err) {
+				if (![ "Unknown Member", "Unknown User" ].includes(err.message)) {
+					logError(err);
+				}
+			}
+
+			const hasExceptionRoles = !!member?.roles?.cache?.find(r => rolesExceptions.includes(r.id));
 			if (hasExceptionRoles) {
 				return false;
 			}
