@@ -23,12 +23,14 @@ module.exports = {
 	},
 
 	async execute({ interaction }) {
-		await interaction.reply({ content: local.updateNicknamesReply, ephemeral: true });
-
 		const file = interaction.options.getAttachment("file");
 		const fileData = await downloadFile(file.url);
-		await fs.promises.writeFile(nicknamesPath, fileData);
+		if (configService.sheetValidationCode && !fileData.includes(configService.sheetValidationCode)) {
+			return await interaction.reply({ content: "Неверный лист пользователей!", ephemeral: true });
+		}
 
+		await interaction.reply({ content: local.updateNicknamesReply, ephemeral: true });
+		await fs.promises.writeFile(nicknamesPath, fileData);
 		await adService.processRatingRolesUpdate(interaction);
 	}
 };

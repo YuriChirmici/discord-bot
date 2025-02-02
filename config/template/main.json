@@ -23,6 +23,7 @@
 		"savedFolderMaxSizeMB": 500
 	},
 	"sheetMembersChannelId": "",
+	"sheetValidationCode": "",
 	"regiments": [
 		{
 			"id": 1,
