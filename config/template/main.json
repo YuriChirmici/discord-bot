@@ -57,5 +57,10 @@
 			"isExcluded": true
 		}
 	],
-	"inactiveRoles": []
+	"inactiveRoles": [],
+	"gameTracking": {
+		"trackingChannels": [],
+		"trackingRoles": [],
+		"trackingResultChannel": ""
+	}
 }

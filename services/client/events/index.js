@@ -5,6 +5,7 @@ const { registerEvents: registerVoiceEvents } = require("./voice");
 const { registerEvents: registerFormsEvents } = require("./forms");
 const { registerEvents: registerMemberCommandsEvents } = require("./memberCommands");
 const { registerEvents: deletedMessagesEvents } = require("./deleted-messages");
+const { registerEvents: gameTrackingEvents } = require("./game-tracking");
 const customIdService = require("../../custom-id");
 
 const findCommand = (commands, commandName) => {
@@ -65,6 +66,7 @@ const registerEvents = (client) => {
 	registerVoiceEvents(client);
 	registerFormsEvents(client);
 	registerMemberCommandsEvents(client);
+	gameTrackingEvents(client);
 
 	if (configService.deletedMessagesLogging?.channelId) {
 		deletedMessagesEvents(client);

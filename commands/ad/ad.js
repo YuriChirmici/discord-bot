@@ -2,7 +2,7 @@ const { SlashCommandBuilder, PermissionFlagsBits } = require("discord.js");
 const adService = require("../../services/ad");
 const configService = require("../../services/config");
 const { Models } = require("../../database");
-const { createButtons, createSelect, getButtonsFlat, createEmbed, setRoles } = require("../../services/helpers");
+const { createButtons, createSelect, getButtonsFlat, createEmbed, setRoles, fetchChannelSafe } = require("../../services/helpers");
 const customIdService = require("../../services/custom-id");
 const memberCommandsService = require("../../services/member-commands");
 const localizationService = require("../../services/localization");
@@ -41,7 +41,7 @@ module.exports = {
 		const { channelId, timer, title, text, content, clearRoles } = this.getCommandOptions(interaction);
 
 		const messageProps = await this.createAdMessage({ title, text, content }, adConfig);
-		const targetChannel = await this._prepareTargetChannel(client, channelId);
+		const targetChannel = await fetchChannelSafe(client, channelId);
 
 		await this[creationFuncName](interaction, client, { messageProps, targetChannel, timer, clearRoles });
 	},
@@ -163,20 +163,6 @@ module.exports = {
 		};
 
 		return select;
-	},
-
-	async _prepareTargetChannel(client, channelId) {
-		if (!channelId) {
-			return;
-		}
-
-		try {
-			return await client.channels.fetch(channelId);
-		} catch (err) {
-			if (err.message !== "Unknown Channel") {
-				logError(err);
-			}
-		}
 	},
 
 	async buttonClick({ interaction }) {

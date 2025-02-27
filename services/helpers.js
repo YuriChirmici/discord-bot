@@ -340,3 +340,17 @@ module.exports.getNextIntervalDate = (intervalMs) => {
 
 	return nextDate;
 };
+
+module.exports.fetchChannelSafe = async (client, channelId) => {
+	if (!channelId) {
+		return;
+	}
+
+	try {
+		return await client.channels.fetch(channelId);
+	} catch (err) {
+		if (err.message !== "Unknown Channel") {
+			logError(err);
+		}
+	}
+};
