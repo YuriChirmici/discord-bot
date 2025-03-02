@@ -1,7 +1,7 @@
 class TimersService {
 	constructor() {
 		this.targetMemberTimers = [];
-		this.leavingTargetTimerDuration = 5 * 1000;
+		this.leavingTargetTimerDuration = 5 * 60 * 1000;
 
 		this.targetFetchReplayIntervals = [];
 		this.fetchReplayIntervalDuration = 60 * 1000;
