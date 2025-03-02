@@ -204,7 +204,7 @@ class PrepareResultService {
 
 		const maxNicknamesLength = Math.max(...nicknamesColumns.map((name) => this._calculateVisualLength(name)));
 		nicknamesColumns = nicknamesColumns.map((name) => {
-			const spacesCount = maxNicknamesLength + 10 - this._calculateVisualLength(name);
+			const spacesCount = maxNicknamesLength + 8 - this._calculateVisualLength(name);
 			return name + " ".repeat(spacesCount);
 		});
 
