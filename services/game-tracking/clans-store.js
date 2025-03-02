@@ -33,7 +33,7 @@ class ClansStoreService {
 	}
 
 	updateClan(clan, timestamp) {
-		this.clans.filter(c => c.id !== clan.id);
+		this.clans.filter(c => c.id != clan._id);
 		this.clans.push({
 			...this.prepareClanData(clan),
 			cacheTimestamp: timestamp,

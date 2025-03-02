@@ -27,6 +27,10 @@ class PrepareResultService {
 	prepareTeams(replayData, clansData) {
 		let { team_1: team1, team_2: team2 } = replayData.players;
 
+		if (clansData?.ourTeamNo === 1) {
+			[ team1, team2 ] = [ team2, team1 ];
+		}
+
 		this._preprocessData({ team1, team2 });
 		team1 = this.sortTeam(team1);
 		team2 = this.sortTeam(team2);
