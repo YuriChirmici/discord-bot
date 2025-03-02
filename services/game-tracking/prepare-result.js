@@ -194,7 +194,7 @@ class PrepareResultService {
 				playerRow += " (заменён)";
 			}
 
-			nicknamesColumns.push(playerRow);
+			nicknamesColumns.push(this._prepareName(playerRow, true));
 			unitsColumns.push(unitsRow);
 		});
 
