@@ -19,6 +19,6 @@ const Schema = new mongoose.Schema({
 		type: String,
 		required: true
 	},
-}).index({ serialNumber: 1 });
+});
 
 module.exports = mongoose.model("NicknameChannelSlot", Schema);

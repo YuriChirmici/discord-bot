@@ -30,7 +30,8 @@
 			"name": "",
 			"sheetLetter": "A",
 			"shortName": "",
-			"shouldUpdateRatingRoles": true
+			"shouldUpdateRatingRoles": true,
+			"gamesTrackingEnabled": true
 		},
 		{
 			"id": 2,
@@ -61,6 +62,7 @@
 	"gameTracking": {
 		"trackingChannels": [],
 		"trackingRoles": [],
-		"trackingResultChannel": ""
+		"resultChannelId": "",
+		"replayFetchCookie": ""
 	}
 }

@@ -2,6 +2,7 @@ const commandsService = require("./commands");
 const formsService = require("./forms");
 const memberCommandsService = require("./member-commands");
 const gameAccountsService = require("./game-accounts");
+const gameTrackingService = require("./game-tracking");
 const { getNextIntervalDate } = require("./helpers");
 const { Models } = require("../database");
 
@@ -71,5 +72,6 @@ module.exports = {
 	start(client) {
 		run(client, true);
 		setInterval(() => run(client), INTERVAL);
+		gameTrackingService.stopTrackingAll(client);
 	}
 };

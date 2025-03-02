@@ -822,6 +822,10 @@ class GameAccounts {
 	}
 
 	async runListCheckTask(client) {
+		if (configService.isDev) {
+			return;
+		}
+
 		const guild = await client.guilds.fetch(configService.guildId);
 		const { resultText } = await this.checkMembersAndUpdateRatingRoles(guild, true);
 		if (!resultText || this.lastListAutoCheckMessage === resultText) {

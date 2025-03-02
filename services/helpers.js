@@ -354,3 +354,11 @@ module.exports.fetchChannelSafe = async (client, channelId) => {
 		}
 	}
 };
+
+module.exports.tagMember = (memberId) => `<@${memberId}>`;
+
+module.exports.tagChannel = (channelId) => `<#${channelId}>`;
+
+const isChangeChannel = module.exports.isChangeChannel = (oldState, newState) => (oldState.channel && newState.channel && oldState.channel.id !== newState.channel.id);
+module.exports.isJoinChannel = (oldState, newState) => (!oldState.channel && newState.channel) || isChangeChannel(oldState, newState);
+module.exports.isLeaveChannel = (oldState, newState) => (oldState.channel && !newState.channel) || isChangeChannel(oldState, newState);

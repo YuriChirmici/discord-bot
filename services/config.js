@@ -3,6 +3,10 @@ const ads = require("../config/ads.json");
 const memberCommands = require("../config/member-commands.json");
 
 class ConfigService {
+	constructor() {
+		this.init();
+	}
+
 	init() {
 		const config = {
 			...main,

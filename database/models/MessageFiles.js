@@ -11,6 +11,6 @@ const MessageFilesSchema = new mongoose.Schema({
 		_id: false,
 	} ],
 	filesSize: Number,
-}, { timestamps: true }).index({ messageId: 1 });
+}, { timestamps: true });
 
 module.exports = mongoose.model("MessageFiles", MessageFilesSchema);

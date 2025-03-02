@@ -1,10 +1,10 @@
+const configService = require("./services/config");
 const fs = require("fs");
 const path = require("path");
 require("./services/globals");
 const { start: schedulerStart } = require("./services/scheduler");
 const discordClientService = require("./services/client");
 const { connect: dbConnect } = require("./database");
-const configService = require("./services/config");
 const commandsService = require("./services/commands");
 const messageDeletionService = require("./services/messages-deletion");
 
@@ -15,7 +15,6 @@ if (!fs.existsSync(srcPath)) {
 
 (async () => {
 	try {
-		configService.init();
 		commandsService.init();
 
 		const promises = [

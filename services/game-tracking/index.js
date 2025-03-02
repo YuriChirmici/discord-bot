@@ -2,26 +2,45 @@ const configService = require("../config");
 const profileService = require("../profile");
 const { Models } = require("../../database");
 const TimersService = require("./timers");
-const { fetchChannelSafe } = require("../helpers");
+const replayParser = require("./replay-parser");
+const replayFetchService = require("./fetch-replays");
+const prepareResultService = require("./prepare-result");
+const clansStoreService = require("./clans-store");
+const { fetchChannelSafe, tagMember, tagChannel, createEmbed, isJoinChannel, isLeaveChannel } = require("../helpers");
 
 class GameTrackingService {
 	constructor() {
 		this.minMembersToTrack = 8;
 		this.maxMembersToStopTrack = 5;
 
+		this.lastReplayRangeSeconds = 3 * 60;
+
 		this.timersService = new TimersService();
+		this.replayParser = replayParser;
+		this.replayFetchService = replayFetchService;
+		this.prepareResultService = prepareResultService;
+		this.clansStoreService = clansStoreService;
+
+		this.snipeGamesDefaultLimit = 5;
 	}
 
-	isTargetLeavingHisChannel(channelId, memberId) {
-		if (!(configService.gameTracking?.trackingChannels || []).includes(channelId) || !this.isMemberTrackable(memberId)) {
+	isTargetLeavingHisChannel(channelId, member) {
+		if (!(configService.gameTracking?.trackingChannels || []).includes(channelId) || !this.isMemberTrackable(member)) {
 			return false;
 		}
 
-		return Models.Profile.exists({ memberId, gameTrackingChannelId: channelId });
+		return Models.Profile.exists({ memberId: member.id, gameTrackingChannelId: channelId });
 	}
 
-	findTrackableChannelMember(channel) {
-		return (channel?.members || []).find(m => this.isMemberTrackable(m));
+	async findTrackableChannelMemberProfile(channel) {
+		const members = (channel?.members || []).filter(m => this.isMemberTrackable(m));
+		const profile = await Models.Profile.findOne({
+			memberId: { $in: members.map(m => m.id) },
+			gameAccounts: { $exists: true, $ne: [] },
+			gameTrackingChannelId: { $exists: false }
+		});
+
+		return profile;
 	}
 
 	isMemberTrackable(member) {
@@ -29,8 +48,35 @@ class GameTrackingService {
 		return member.roles.cache.some(r => trackingRoles.includes(r.id));
 	}
 
-	async startTracking(channelId, memberId) {
-		await profileService.createOrUpdate(memberId, { gameTrackingChannelId: channelId });
+	async startTracking(channelId, profile) {
+		await profileService.createOrUpdate(profile.memberId, { gameTrackingChannelId: channelId });
+
+		const trackableNicknames = [];
+		for (let gameAccount of profile.gameAccounts) {
+			const regiment = configService.regiments.find(r => r.id === gameAccount.regimentId);
+			if (regiment?.gamesTrackingEnabled) {
+				trackableNicknames.push(gameAccount.nickname);
+			}
+		}
+
+		if (!trackableNicknames.length) {
+			return;
+		}
+
+		const callback = async ({ nickname, lastSessionId }) => {
+			const lastReplayData = await this.getLastGameResultByPlayerNickname(nickname, lastSessionId);
+			if (lastReplayData.sessionId) {
+				if (lastReplayData.sessionId !== lastSessionId) {
+					await this.sendTrackingLog(lastReplayData.message);
+				}
+
+				return { sessionId: lastReplayData.sessionId };
+			}
+			};
+
+		this.timersService.startIntervalForFetchLastReplays(callback, { memberId: profile.memberId, nicknames: trackableNicknames });
+
+		await this.sendTrackingLog(`Начинаю отслеживать игрока ${tagMember(profile.memberId)} в канале ${tagChannel(channelId)}`);
 	}
 
 	async startTrackingSafe(channel) {
@@ -45,14 +91,27 @@ class GameTrackingService {
 			return;
 		}
 
-		const member = this.findTrackableChannelMember(channel);
-		if (member) {
-			await this.startTracking(channel.id, member.id);
+		const profile = await this.findTrackableChannelMemberProfile(channel);
+		if (profile) {
+			await this.startTracking(channel.id, profile);
 		}
 	}
 
 	async stopTrackingMember(memberId) {
-		await Models.Profile.updateOne({ memberId }, { gameTrackingChannelId: null });
+		const profile = await Models.Profile.findOneAndUpdate({
+			memberId,
+			gameTrackingChannelId: { $exists: true }
+		}, {
+			$unset: { gameTrackingChannelId: "" }
+		});
+
+		if (profile) {
+			await this.sendTrackingLog(`Прекращаю отслеживать игрока ${tagMember(profile.memberId)} в канале ${tagChannel(profile.gameTrackingChannelId)}`);
+		}
+
+		this.timersService.clearFetchReplayIntervalForMember(memberId);
+
+		return { profile };
 	}
 
 	async stopTrackingChannelSafe(client, channelId) {
@@ -68,32 +127,34 @@ class GameTrackingService {
 	}
 
 	async stopTrackingChannel(channelId) {
-		await Models.Profile.updateOne({ gameTrackingChannelId: channelId }, { gameTrackingChannelId: null });
+		const profile = await Models.Profile.findOneAndUpdate({ gameTrackingChannelId: channelId }, { $unset: { gameTrackingChannelId: "" } });
+		if (profile) {
+			await this.sendTrackingLog(`Прекращаю отслеживать игрока ${tagMember(profile.memberId)} в канале ${tagChannel(channelId)}`);
+			this.timersService.clearFetchReplayIntervalForMember(profile.memberId);
+		}
 	}
 
 	async checkIsChannelTracking(channelId) {
 		return await Models.Profile.exists({ gameTrackingChannelId: channelId });
 	}
 
-	async checkIsMemberTracking(memberId) {
-		return await Models.Profile.exists({ memberId, gameTrackingChannelId: { $ne: null } });
-	}
-
 	async onVoiceStateUpdate({ oldState, newState, client }) {
-		if (oldState?.channel) {
+		if (isLeaveChannel(oldState, newState)) {
 			await this.leaveChannel({ oldState, newState, client });
 		}
 
-		if (newState?.channel) {
+		if (isJoinChannel(oldState, newState)) {
 			await this.joinChannel({ oldState, newState, client });
 		}
 	}
 
-	async joinChannel({ newState }) {
+	async joinChannel({ newState, client }) {
 		const trackingChannels = configService.gameTracking?.trackingChannels || [];
 		if (!trackingChannels.includes(newState.channel.id)) {
 			return;
 		}
+
+		await this.setGameTrackingResultChannel(client);
 
 		// check if target is returning to his channel
 		const timerData = this.timersService.getTimerForMember(newState.member.id);
@@ -111,9 +172,11 @@ class GameTrackingService {
 			return;
 		}
 
+		await this.setGameTrackingResultChannel(client);
+
 		if (oldState.channel.members.size <= this.maxMembersToStopTrack) {
 			await this.stopTrackingChannelSafe(client, oldState.channel.id);
-		} else if (await this.isTargetLeavingHisChannel(oldState.channel.id, oldState.member.id)) {
+		} else if (await this.isTargetLeavingHisChannel(oldState.channel.id, oldState.member)) {
 			await this._processTargetLeavingChannel({ oldState, newState, client });
 		}
 	}
@@ -121,7 +184,7 @@ class GameTrackingService {
 	async _processTargetLeavingChannel({ oldState, newState, client }) {
 		const callback = async () => {
 			await this.stopTrackingMember(oldState.member.id);
-			if (newState && !(await this.checkIsChannelTracking(newState.channel.id))) {
+			if (newState?.channel && !(await this.checkIsChannelTracking(newState.channel.id))) {
 				const newChannel = await fetchChannelSafe(client, newState.channel.id);
 				await this.startTrackingSafe(newChannel);
 			}
@@ -135,7 +198,136 @@ class GameTrackingService {
 			newChannelId: newState?.channel?.id,
 			memberId: oldState.member.id
 		});
+
+		let message = `Игрок ${tagMember(oldState.member.id)} покинул канал ${tagChannel(oldState.channel.id)}. `;
+		message += `Отслеживание будет прекращено через ${Math.round(this.timersService.leavingTargetTimerDuration / 60000)} минут`;
+
+		await this.sendTrackingLog(message);
+	}
+
+	async getLastGameResultByPlayerNickname(nickname, lastSessionId) {
+		const replayData = (await this.replayFetchService.findLastReplaysByNickname(nickname))[0];
+		if (!replayData || (replayData.endTime + this.lastReplayRangeSeconds < Date.now() / 1000) || replayData.sessionId === lastSessionId) {
+			return { message: "Не удалось найти реплей" };
+		}
+
+		const team1 = replayData.players.team_1;
+		const team2 = replayData.players.team_2;
+
+		const playerIds = [ ...team1, ...team2 ].map(p => p.userId);
+		const parsingResult = await this.replayParser.parseReplay(replayData, playerIds);
+		if (parsingResult.players.length !== this.replayParser.playersMaxLimit) {
+			return { message: "Не удалось получить информацию об игроках" };
+		}
+
+		[ team1, team2 ].forEach(team => {
+			team.forEach(player => {
+				const parsedPlayer = parsingResult.players.find(p => p.id == player.userId);
+				Object.assign(player, parsedPlayer);
+			});
+		});
+
+		const clansData = await this.clansStoreService.getClanDataForReplay({ team1, team2 });
+		const message = this.prepareResultService.prepareTeams(replayData, clansData);
+
+		return { message, sessionId: replayData.sessionId };
+	}
+
+	async stopTrackingAll(client) {
+		await this.setGameTrackingResultChannel(client);
+
+		const profiles = await Models.Profile.find({ gameTrackingChannelId: { $exists: true } });
+		for (let profile of profiles) {
+			await this.stopTrackingChannel(profile.gameTrackingChannelId);
+		}
+	}
+
+	async getCurrentTrackingInfo() {
+		const profiles = await Models.Profile.find({ gameTrackingChannelId: { $exists: true } });
+		if (!profiles.length) {
+			return "Отслеживаемых игроков нет";
+		}
+
+		let resultText = "Отслеживаемые игроки:\n";
+		for (let profile of profiles) {
+			resultText += `${tagMember(profile.memberId)} в канале ${tagChannel(profile.gameTrackingChannelId)}\n`;
+		}
+
+		return resultText;
+	}
+
+	async getEnemyLastGamesStats(nickname, limit = this.snipeGamesDefaultLimit) {
+		const replays = await this.replayFetchService.findLastReplaysByNickname(nickname, { limit });
+		if (!replays.length) {
+			return { errorMessage: "Не удалось найти реплеи" };
+		}
+
+		const enemyTeamData = [];
+		const lastGameUsersIds = [ ...replays[0].players.team_1, ...replays[0].players.team_2 ].map(p => p.userId);
+
+		for (let replay of replays) {
+			const team1 = replay.players.team_1;
+			const team2 = replay.players.team_2;
+
+			const playerIds = [ ...team1, ...team2 ].map(p => p.userId);
+			const parsingResult = await this.replayParser.parseReplay(replay, playerIds);
+			if (parsingResult.players.length !== this.replayParser.playersMaxLimit) {
+				continue;
+			}
+
+			[ team1, team2 ].forEach(team => {
+				team.forEach(player => {
+					const parsedPlayer = parsingResult.players.find(p => p.id == player.userId);
+					Object.assign(player, parsedPlayer);
+				});
+			});
+
+			const enemyTeam = [ team1, team2 ].find(team => team.some(player => player.name === nickname)) || [];
+			enemyTeamData.push(...enemyTeam);
+		}
+
+		if (!enemyTeamData.length) {
+			return { errorMessage: "Не удалось получить информацию об игроках" };
+		}
+
+		enemyTeamData.forEach(player => {
+			if (!lastGameUsersIds.includes(player.userId)) {
+				player.isReplaced = true;
+			}
+		});
+
+		const { header, message } = this.prepareResultService.prepareEnemyLastGamesStats(enemyTeamData, { count: replays.length, nickname });
+
+		return { header, message };
+	}
+
+	// #region result channel
+	async setGameTrackingResultChannel(client) {
+		if (this.resultChannel || !configService.gameTracking.resultChannelId) {
+			return;
+		}
+
+		this.resultChannel = await fetchChannelSafe(client, configService.gameTracking.resultChannelId);
+	}
+
+	async sendTrackingLog(result) {
+		if (!this.resultChannel) {
+			return;
+		}
+
+		await this.resultChannel.send(result);
+	}
+
+	async sendStatInfo({ channel, header, message }) {
+		const embed = createEmbed({
+			title: header,
+			description: message
+		});
+
+		await channel.send({ embeds: [ embed ] });
 	}
 };
 
-module.exports = new GameTrackingService();
+const gameTrackingService = new GameTrackingService();
+
+module.exports = gameTrackingService;

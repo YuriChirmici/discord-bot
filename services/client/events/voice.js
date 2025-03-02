@@ -1,15 +1,16 @@
 const { Events } = require("discord.js");
 const tempVoiceService = require("../../temp-voice");
 const { Models } = require("../../../database");
+const { isJoinChannel, isLeaveChannel } = require("../../helpers");
 
 const registerEvents = (client) => {
 	client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
 		try {
-			if (oldState.channelId) {
+			if (isLeaveChannel(oldState, newState)) {
 				await tempVoiceService.leaveChannel({ state: oldState });
 			}
 
-			if (newState.channelId) {
+			if (isJoinChannel(oldState, newState)) {
 				await tempVoiceService.joinChannel({ client, state: newState });
 			}
 		} catch (err) {

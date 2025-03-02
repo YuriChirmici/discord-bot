@@ -6,7 +6,7 @@ class CustomIdService {
 		return item._id.toString();
 	}
 
-	async getDataFromCustomId(customId) {
+	async getDataFromCustomId(customId, remove = false) {
 		if (!customId) {
 			return;
 		}
@@ -14,6 +14,10 @@ class CustomIdService {
 		const dbItem = await Models.CustomId.findById(customId).lean();
 		if (!dbItem) {
 			return;
+		}
+
+		if (remove) {
+			await Models.CustomId.deleteOne({ _id: customId });
 		}
 
 		return {
