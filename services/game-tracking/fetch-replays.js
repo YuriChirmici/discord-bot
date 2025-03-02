@@ -21,8 +21,6 @@ class ReplayFetch {
 			"limit": 1,
 			"page": 1
 		};
-
-		this.cookie = configService.gameTracking.replayFetchCookie;
 	}
 
 	async _getReplaysInfo(params = {}) {
@@ -48,7 +46,7 @@ class ReplayFetch {
 				"sec-fetch-site": "same-origin",
 				"Referer": "https://warthunder.com/en/tournament/replay/",
 				"Referrer-Policy": "no-referrer-when-downgrade",
-				"cookie": this.cookie,
+				"cookie": configService.gameTracking.replayFetchCookie,
 			},
 			method: "POST",
 			body: JSON.stringify({

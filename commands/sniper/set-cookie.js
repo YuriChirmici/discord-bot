@@ -27,6 +27,6 @@ module.exports = {
 		configService.gameTracking.replayFetchCookie = currentConfigFile.gameTracking.replayFetchCookie = cookie;
 		fs.writeFileSync(filePath, JSON.stringify(currentConfigFile, null, 2));
 
-		await interaction.reply("Test");
+		await interaction.reply("Новые куки успешно установлены");
 	}
 };
