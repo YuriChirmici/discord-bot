@@ -250,6 +250,7 @@ class PrepareResultService {
 		});
 
 		players.sort((a, b) => (a.unitsPriority - b.unitsPriority));
+		players.sort((a, b) => (!!a.isReplaced - !!b.isReplaced));
 
 		return players;
 	}
