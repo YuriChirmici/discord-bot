@@ -21,7 +21,7 @@ class GameTrackingService {
 		this.prepareResultService = prepareResultService;
 		this.clansStoreService = clansStoreService;
 
-		this.snipeGamesDefaultLimit = 5;
+		this.snipeGamesMaxLimit = 5;
 	}
 
 	isTargetLeavingHisChannel(channelId, member) {
@@ -264,7 +264,7 @@ class GameTrackingService {
 		return resultText;
 	}
 
-	async getEnemyLastGamesStats(nickname, limit = this.snipeGamesDefaultLimit) {
+	async getEnemyLastGamesStats(nickname, limit = 1) {
 		const replays = await this.replayFetchService.findLastReplaysByNickname(nickname, { limit });
 		if (!replays.length) {
 			return { errorMessage: "Не удалось найти реплеи" };

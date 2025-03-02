@@ -26,6 +26,12 @@ module.exports = {
 				.setDescription("Клан игрока (необязательно)")
 				.setMinLength(2)
 			)
+			.addIntegerOption(option => option
+				.setName("count")
+				.setDescription("Количество последних игр. По умолчанию 1")
+				.setMinValue(1)
+				.setMaxValue(gameTrackingService.snipeGamesMaxLimit)
+			)
 			.setDMPermission(false);
 	},
 
@@ -34,9 +40,10 @@ module.exports = {
 
 		const nickname = interaction.options.getString("nickname").trim();
 		const clanTag = (interaction.options.getString("clan") || "").trim();
+		const count = interaction.options.getInteger("count") || 1;
 
 		if (!clanTag) {
-			await this.sendEnemyLastGamesStatsMessage(interaction, nickname);
+			await this.sendEnemyLastGamesStatsMessage(interaction, nickname, count);
 			return;
 		}
 
@@ -55,10 +62,10 @@ module.exports = {
 		if (!members.length) {
 			await interaction.channel.send(`Игрок с символами "${nickname}" не найден в клане ${clan.name}`);
 		} else if (members.length === 1) {
-			await this.sendEnemyLastGamesStatsMessage(interaction, members[0].nick);
+			await this.sendEnemyLastGamesStatsMessage(interaction, members[0].nick, count);
 		} else {
 			const content = `Найдено несколько игроков с символами "${nickname}", выберите нужного:`;
-			const select = await this._createSelectWithMembers(members);
+			const select = await this._createSelectWithMembers(members, count);
 			await interaction.channel.send({
 				content,
 				components: [ select ]
@@ -66,8 +73,8 @@ module.exports = {
 		}
 	},
 
-	async _createSelectWithMembers(members) {
-		const customIdData = { commandName: this.name, data: { type: "clanMembers" } };
+	async _createSelectWithMembers(members, gamesCount) {
+		const customIdData = { commandName: this.name, data: { type: "clanMembers", count: gamesCount } };
 		const customId = await customIdService.createCustomId(customIdData);
 		const select = createSelect(customId, {
 			placeholder: "Выберите игрока",
@@ -86,14 +93,14 @@ module.exports = {
 		if (data.type === "clanMembers") {
 			await interaction.reply({ ephemeral: true, content: "Получаю результат..." });
 			const selectedNickname = (interaction.values || [])[0];
-			await this.sendEnemyLastGamesStatsMessage(interaction, selectedNickname);
+			await this.sendEnemyLastGamesStatsMessage(interaction, selectedNickname, data.count);
 			await interaction.message.delete();
 			return;
 		}
 	},
 
-	async sendEnemyLastGamesStatsMessage(interaction, nickname) {
-		const info = await gameTrackingService.getEnemyLastGamesStats(nickname);
+	async sendEnemyLastGamesStatsMessage(interaction, nickname, count) {
+		const info = await gameTrackingService.getEnemyLastGamesStats(nickname, count);
 		if (info.errorMessage) {
 			await interaction.channel.send(info.errorMessage);
 			return;
