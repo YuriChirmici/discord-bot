@@ -64,6 +64,7 @@ class GameTrackingService {
 		}
 
 		const callback = async ({ nickname, lastSessionId }) => {
+			try {
 			const lastReplayData = await this.getLastGameResultByPlayerNickname(nickname, lastSessionId);
 			if (lastReplayData.sessionId) {
 				if (lastReplayData.sessionId !== lastSessionId) {
@@ -71,6 +72,9 @@ class GameTrackingService {
 				}
 
 				return { sessionId: lastReplayData.sessionId };
+				}
+			} catch (err) {
+				logError(err);
 			}
 		};
 
@@ -183,6 +187,7 @@ class GameTrackingService {
 
 	async _processTargetLeavingChannel({ oldState, newState, client }) {
 		const callback = async () => {
+			try {
 			await this.stopTrackingMember(oldState.member.id);
 			if (newState?.channel && !(await this.checkIsChannelTracking(newState.channel.id))) {
 				const newChannel = await fetchChannelSafe(client, newState.channel.id);
@@ -191,6 +196,9 @@ class GameTrackingService {
 
 			const oldChannel = await fetchChannelSafe(client, oldState.channel.id);
 			await this.startTrackingSafe(oldChannel);
+			} catch (err) {
+				logError(err);
+			}
 		};
 
 		this.timersService.startTimerForLeavingTarget(callback, {
