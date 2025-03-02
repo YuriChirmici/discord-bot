@@ -5,8 +5,8 @@ class ClansStoreService {
 	constructor() {
 		this.clans = [];
 		if (!configService.isDev) {
-		this.init();
-	}
+			this.init();
+		}
 	}
 
 	async init() {

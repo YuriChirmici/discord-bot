@@ -72,7 +72,7 @@ class GameTrackingService {
 
 				return { sessionId: lastReplayData.sessionId };
 			}
-			};
+		};
 
 		this.timersService.startIntervalForFetchLastReplays(callback, { memberId: profile.memberId, nicknames: trackableNicknames });
 
