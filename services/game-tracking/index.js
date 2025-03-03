@@ -65,13 +65,13 @@ class GameTrackingService {
 
 		const callback = async ({ nickname, lastSessionId }) => {
 			try {
-			const lastReplayData = await this.getLastGameResultByPlayerNickname(nickname, lastSessionId);
-			if (lastReplayData.sessionId) {
-				if (lastReplayData.sessionId !== lastSessionId) {
-					await this.sendTrackingLog(lastReplayData.message);
-				}
+				const lastReplayData = await this.getLastGameResultByPlayerNickname(nickname, lastSessionId);
+				if (lastReplayData.sessionId) {
+					if (lastReplayData.sessionId !== lastSessionId) {
+						await this.sendTrackingLog(lastReplayData.message);
+					}
 
-				return { sessionId: lastReplayData.sessionId };
+					return { sessionId: lastReplayData.sessionId };
 				}
 			} catch (err) {
 				logError(err);
@@ -188,14 +188,14 @@ class GameTrackingService {
 	async _processTargetLeavingChannel({ oldState, newState, client }) {
 		const callback = async () => {
 			try {
-			await this.stopTrackingMember(oldState.member.id);
-			if (newState?.channel && !(await this.checkIsChannelTracking(newState.channel.id))) {
-				const newChannel = await fetchChannelSafe(client, newState.channel.id);
-				await this.startTrackingSafe(newChannel);
-			}
+				await this.stopTrackingMember(oldState.member.id);
+				if (newState?.channel && !(await this.checkIsChannelTracking(newState.channel.id))) {
+					const newChannel = await fetchChannelSafe(client, newState.channel.id);
+					await this.startTrackingSafe(newChannel);
+				}
 
-			const oldChannel = await fetchChannelSafe(client, oldState.channel.id);
-			await this.startTrackingSafe(oldChannel);
+				const oldChannel = await fetchChannelSafe(client, oldState.channel.id);
+				await this.startTrackingSafe(oldChannel);
 			} catch (err) {
 				logError(err);
 			}
