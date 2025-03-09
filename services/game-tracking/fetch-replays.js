@@ -55,15 +55,26 @@ class ReplayFetch {
 			}),
 		});
 
-		const json = await result.json();
+		try {
+			const json = await result.json();
 
-		if (this.isCookieExpired(json)) {
-			throw new Error("Replay cookie is expired");
+			if (this.isCookieExpired(json)) {
+				throw new Error("Replay cookie is expired");
+			}
+
+			this.fetchReplayErrorLogged = false;
+
+			return json;
+		} catch (err) {
+			if (this.fetchReplayErrorLogged) {
+				console.error(err);
+			} else {
+				logError("Site error, failed to fetch replays");
+				this.fetchReplayErrorLogged = true;
+			}
+
+			return {};
 		}
-
-		this.cookie - result.headers.get("set-cookie");
-
-		return json;
 	}
 
 	async downloadReplay(baseUrl, index) {
@@ -81,7 +92,7 @@ class ReplayFetch {
 			...query,
 		});
 
-		return (replaysInfo.items || []).slice(0, query.limit || 1);
+		return (replaysInfo.items || []).slice(0, query.limit || 1).filter(Boolean);
 	}
 
 	isCookieExpired(result) {
