@@ -4,7 +4,7 @@ class TimersService {
 		this.leavingTargetTimerDuration = 5 * 60 * 1000;
 
 		this.targetFetchReplayIntervals = [];
-		this.fetchReplayIntervalDuration = 60 * 1000;
+		this.fetchReplayIntervalDuration = 25 * 1000;
 		this.coolDownAfterSuccessFetchReplay = 200 * 1000;
 	}
 

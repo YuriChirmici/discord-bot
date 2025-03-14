@@ -206,11 +206,6 @@ class GameTrackingService {
 			newChannelId: newState?.channel?.id,
 			memberId: oldState.member.id
 		});
-
-		let message = `Игрок ${tagMember(oldState.member.id)} покинул канал ${tagChannel(oldState.channel.id)}. `;
-		message += `Отслеживание будет прекращено через ${Math.round(this.timersService.leavingTargetTimerDuration / 60000)} минут`;
-
-		await this.sendTrackingLog(message);
 	}
 
 	async getLastGameResultByPlayerNickname(nickname, lastSessionId) {
