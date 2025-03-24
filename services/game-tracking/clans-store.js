@@ -141,8 +141,21 @@ class ClansStoreService {
 	}
 
 	async _fetchClan(clan) {
-		const result = await fetch(`https://api.thunderinsights.dk/v1/clans/direct/clan/search/?clan=${clan}`);
-		return await result.json();
+		try {
+			const result = await fetch(`https://api.thunderinsights.dk/v1/clans/direct/clan/search/?clan=${clan}`);
+			const data = await result.json();
+
+			this.apiErrorLogged = false;
+			return data;
+		} catch (err) {
+			if (!this.apiErrorLogged) {
+				logError("API site error, failed to fetch clan");
+			}
+
+			this.apiErrorLogged = true;
+			console.error(err);
+			return {};
+		}
 	}
 
 	_newNameGenerator(name) {
