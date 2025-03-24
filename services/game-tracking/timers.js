@@ -47,7 +47,7 @@ class TimersService {
 	startIntervalForFetchLastReplays(callback, { memberId, nicknames }) {
 		const callbackWrapper = async () => {
 			const intervalData = this.targetFetchReplayIntervals.find((t) => t.memberId === memberId);
-			if (!intervalData) {
+			if (!intervalData || intervalData.hasStartedCheck) {
 				return;
 			}
 
@@ -58,6 +58,7 @@ class TimersService {
 			let sessionId;
 			const lastSessionId = intervalData.lastSessionId;
 			if (intervalData.lastNickname) {
+				intervalData.hasStartedCheck = true;
 				const result = await callback({ nickname: intervalData.lastNickname, sessionId: lastSessionId });
 				sessionId = result?.sessionId;
 			}
@@ -65,6 +66,7 @@ class TimersService {
 			if (!sessionId) {
 				nicknames = nicknames.filter((n) => n !== intervalData.lastNickname);
 				for (let nickname of nicknames) {
+					intervalData.hasStartedCheck = true;
 					const result = await callback({ nickname, lastSessionId });
 					sessionId = result?.sessionId;
 					if (result?.sessionId) {
@@ -73,6 +75,8 @@ class TimersService {
 					}
 				}
 			}
+
+			intervalData.hasStartedCheck = false;
 
 			if (sessionId) {
 				intervalData.successFetchReplayDate = Date.now();
