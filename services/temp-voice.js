@@ -124,7 +124,16 @@ class TempVoiceService {
 			creatingChannelId,
 			memberId
 		}).lean();
-		(savedSettings?.permissions || []).forEach((item) => item.id = item.itemId);
+
+		if (!savedSettings) {
+			return null;
+		}
+
+		(savedSettings.permissions || []).forEach((item) => item.id = item.itemId);
+
+		if (savedSettings.rtcRegion === "russia") {
+			savedSettings.rtcRegion = null; // temp fix, russian region is not available
+		}
 
 		return savedSettings;
 	}
