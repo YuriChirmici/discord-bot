@@ -11,7 +11,7 @@ class TempVoiceService {
 	async joinChannel({ state }) {
 		const guild = state.guild;
 		const creatingChannelId = state.channelId;
-		const connection = configService.voiceConnections.find(({ channelId }) => channelId === creatingChannelId);
+		const connection = configService.config.voiceConnections.find(({ channelId }) => channelId === creatingChannelId);
 		if (!connection) {
 			return;
 		}
@@ -55,7 +55,7 @@ class TempVoiceService {
 		} ];
 
 		const botPermissions = [ {
-			id: configService.botMemberId,
+			id: configService.config.botMemberId,
 			type: 1, // for member
 			allow: this.defaultBotPermissions,
 		} ];
@@ -72,7 +72,7 @@ class TempVoiceService {
 
 	async leaveChannel({ state }) {
 		const channel = state.channel;
-		const connection = configService.voiceConnections.find(({ categoryId }) => categoryId === channel.parent.id);
+		const connection = configService.config.voiceConnections.find(({ categoryId }) => categoryId === channel.parent.id);
 		if (!connection) {
 			return;
 		}

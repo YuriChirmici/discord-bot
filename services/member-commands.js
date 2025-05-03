@@ -203,7 +203,7 @@ class MemberCommandsService {
 	}
 
 	getCommandByName(name) {
-		return configService.memberCommands.find((c) => c.name === name);
+		return configService.config.memberCommands.find((c) => c.name === name);
 	}
 
 	async runVacationStart(client) {
@@ -219,7 +219,7 @@ class MemberCommandsService {
 
 		const vacationRoles = this.getCommandByName(this.vacationCommandName).vacationRoles;
 		const [ guild, profiles ] = await Promise.all([
-			client.guilds.fetch(configService.guildId),
+			client.guilds.fetch(configService.config.guildId),
 			dbService.Models.Profile.find({ [profileQueryKey]: { $exists: true, $ne: null } })
 		]);
 

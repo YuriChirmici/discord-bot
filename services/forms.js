@@ -26,7 +26,7 @@ class FormsService {
 	}
 
 	getFormByName(name) {
-		const command = configService.memberCommands.find((c) => c.name === name);
+		const command = configService.config.memberCommands.find((c) => c.name === name);
 		return command.type === "form" ? command : null;
 	}
 
@@ -499,7 +499,7 @@ class FormsService {
 
 		let members;
 		if (hasAuthForms) {
-			const guild = await client.guilds.fetch(configService.guildId);
+			const guild = await client.guilds.fetch(configService.config.guildId);
 			members = await getGuildMembers(guild);
 		}
 

@@ -13,7 +13,7 @@ module.exports = {
 		return new SlashCommandBuilder()
 			.setName(NAME)
 			.setDescription("Остановить текущее отслеживание игрока")
-			.setDefaultMemberPermissions(PermissionFlagsBits[configService.commandsPermission])
+			.setDefaultMemberPermissions(PermissionFlagsBits[configService.config.commandsPermission])
 			.addUserOption(option => option.setName("member").setDescription("Пользователь, которому нужно остановить отслеживание").setRequired(true))
 			.setDMPermission(false);
 	},

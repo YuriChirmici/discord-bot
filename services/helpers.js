@@ -244,7 +244,7 @@ module.exports.sleep = async (time) => await new Promise((resolve) => setTimeout
 
 module.exports.createEmbed = ({ description, title }) => {
 	let embed = new EmbedBuilder()
-		.setColor(configService.adsConfig.borderColor);
+		.setColor(configService.config.adsConfig.borderColor);
 
 	if (title) {
 		embed = embed.setTitle(title);

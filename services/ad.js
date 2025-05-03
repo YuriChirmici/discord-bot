@@ -204,7 +204,7 @@ class Ad {
 	}
 
 	getAdConfigByName(name) {
-		return configService.adsConfig.ads.find((ad) => ad.name === name);
+		return configService.config.adsConfig.ads.find((ad) => ad.name === name);
 	}
 
 	getDefaultDate() {
@@ -240,7 +240,7 @@ class Ad {
 
 	async processRatingRolesUpdate(interaction) {
 		const { resultText } = await gameAccountsService.checkMembersAndUpdateRatingRoles(interaction.guild);
-		const channel = await interaction.guild.channels.fetch(configService.ratingRoles.resultChannelId);
+		const channel = await interaction.guild.channels.fetch(configService.config.ratingRoles.resultChannelId);
 		await sendLongMessage(channel, resultText || "Успешно обновлено");
 	}
 

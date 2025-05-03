@@ -15,7 +15,7 @@ module.exports = {
 		return new SlashCommandBuilder()
 			.setName(NAME)
 			.setDescription(local.roleResizeCommand)
-			.setDefaultMemberPermissions(PermissionFlagsBits[configService.commandsPermission])
+			.setDefaultMemberPermissions(PermissionFlagsBits[configService.config.commandsPermission])
 			.addRoleOption(option => option.setName("role").setDescription(local.roleResizeParamRole).setRequired(true))
 			.addStringOption(option => option
 				.setName("text-align")

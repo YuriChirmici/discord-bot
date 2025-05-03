@@ -80,7 +80,7 @@ class GameAccounts {
 			groupedAccounts[acc.member.id].push(acc);
 		});
 
-		const nicknamesChannel = await guild.channels.fetch(configService.sheetMembersChannelId);
+		const nicknamesChannel = await guild.channels.fetch(configService.config.sheetMembersChannelId);
 		for (let key in groupedAccounts) {
 			const accountData = groupedAccounts[key];
 			await this._updateMemberInNicknamesChannel(guild, accountData, nicknamesChannel, nicknameSlots);
@@ -132,14 +132,14 @@ class GameAccounts {
 		deactivateMembers = deactivateMembers.filter((member) => !activateMembers.includes(member));
 
 		await Promise.all([
-			...activateMembers.map((member) => setRoles(member, [], configService.inactiveRoles)),
-			...deactivateMembers.map((member) => setRoles(member, configService.inactiveRoles, [])),
+			...activateMembers.map((member) => setRoles(member, [], configService.config.inactiveRoles)),
+			...deactivateMembers.map((member) => setRoles(member, configService.config.inactiveRoles, [])),
 		]);
 	}
 
 	async getSiteStats() {
 		const regimentsData = await Promise.all(
-			configService.regiments.map((regiment) => this._getSiteStats(regiment))
+			configService.config.regiments.map((regiment) => this._getSiteStats(regiment))
 		);
 
 		const hasMissingRegimentData = regimentsData.some((data) => !data);
@@ -752,16 +752,16 @@ class GameAccounts {
 		}
 
 		const { channelId, messageId } = nicknameSlot;
-		const messageUrl = `https://discord.com/channels/${configService.guildId}/${channelId}/${messageId}`;
+		const messageUrl = `https://discord.com/channels/${configService.config.guildId}/${channelId}/${messageId}`;
 		return messageUrl;
 	}
 
 	getRegimentById(regimentId) {
-		return configService.regiments.find(({ id }) => id == regimentId);
+		return configService.config.regiments.find(({ id }) => id == regimentId);
 	}
 
 	getRegimentByLetter(letter) {
-		return configService.regiments.find(({ sheetLetter }) => sheetLetter === letter);
+		return configService.config.regiments.find(({ sheetLetter }) => sheetLetter === letter);
 	}
 
 	async _updateRatingRoles(gameAccounts) {
@@ -777,7 +777,7 @@ class GameAccounts {
 				groupedAccounts[acc.member.id].push(acc);
 			});
 
-		const ratingLevels = configService.ratingRoles.levels || [];
+		const ratingLevels = configService.config.ratingRoles.levels || [];
 		const promises = [];
 		const allRatingRolesList = ratingLevels.map(({ rolesAdd }) => rolesAdd).flat().filter(Boolean);
 
@@ -792,7 +792,7 @@ class GameAccounts {
 
 	_getRolesByRating(rating) {
 		rating = +rating;
-		const ratingLevels = configService.ratingRoles.levels || [];
+		const ratingLevels = configService.config.ratingRoles.levels || [];
 		let roles = [];
 
 		for (let { from, to, rolesAdd } of ratingLevels) {
@@ -822,11 +822,11 @@ class GameAccounts {
 	}
 
 	async runListCheckTask(client) {
-		if (configService.isDev) {
+		if (configService.localConfig.isDev) {
 			return;
 		}
 
-		const guild = await client.guilds.fetch(configService.guildId);
+		const guild = await client.guilds.fetch(configService.config.guildId);
 		const { resultText } = await this.checkMembersAndUpdateRatingRoles(guild, true);
 		if (!resultText || this.lastListAutoCheckMessage === resultText) {
 			return;
@@ -835,7 +835,7 @@ class GameAccounts {
 		const systemText = this._prepareAutoCheckSystemMessage();
 		const messageText = `${systemText}\n\n${resultText}`;
 
-		const channel = await guild.channels.fetch(configService.ratingRoles.resultChannelId);
+		const channel = await guild.channels.fetch(configService.config.ratingRoles.resultChannelId);
 		await sendLongMessage(channel, messageText);
 
 		this.lastListAutoCheckMessage = resultText;

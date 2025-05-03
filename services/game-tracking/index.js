@@ -25,7 +25,7 @@ class GameTrackingService {
 	}
 
 	isTargetLeavingHisChannel(channelId, member) {
-		if (!(configService.gameTracking?.trackingChannels || []).includes(channelId) || !this.isMemberTrackable(member)) {
+		if (!(configService.config.gameTracking?.trackingChannels || []).includes(channelId) || !this.isMemberTrackable(member)) {
 			return false;
 		}
 
@@ -44,7 +44,7 @@ class GameTrackingService {
 	}
 
 	isMemberTrackable(member) {
-		const trackingRoles = configService.gameTracking?.trackingRoles || [];
+		const trackingRoles = configService.config.gameTracking?.trackingRoles || [];
 		return member.roles.cache.some(r => trackingRoles.includes(r.id));
 	}
 
@@ -53,7 +53,7 @@ class GameTrackingService {
 
 		const trackableNicknames = [];
 		for (let gameAccount of profile.gameAccounts) {
-			const regiment = configService.regiments.find(r => r.id === gameAccount.regimentId);
+			const regiment = configService.config.regiments.find(r => r.id === gameAccount.regimentId);
 			if (regiment?.gamesTrackingEnabled) {
 				trackableNicknames.push(gameAccount.nickname);
 			}
@@ -89,7 +89,7 @@ class GameTrackingService {
 		}
 
 		if ((channel.members.size < this.minMembersToTrack) ||
-			!((configService.gameTracking?.trackingChannels || []).includes(channel.id)) ||
+			!((configService.config.gameTracking?.trackingChannels || []).includes(channel.id)) ||
 			(await this.checkIsChannelTracking(channel.id))
 		) {
 			return;
@@ -153,7 +153,7 @@ class GameTrackingService {
 	}
 
 	async joinChannel({ newState, client }) {
-		const trackingChannels = configService.gameTracking?.trackingChannels || [];
+		const trackingChannels = configService.config.gameTracking?.trackingChannels || [];
 		if (!trackingChannels.includes(newState.channel.id)) {
 			return;
 		}
@@ -171,7 +171,7 @@ class GameTrackingService {
 	}
 
 	async leaveChannel({ oldState, newState, client }) {
-		const trackingChannels = configService.gameTracking?.trackingChannels || [];
+		const trackingChannels = configService.config.gameTracking?.trackingChannels || [];
 		if (!trackingChannels.includes(oldState.channel.id)) {
 			return;
 		}
@@ -306,11 +306,12 @@ class GameTrackingService {
 
 	// #region result channel
 	async setGameTrackingResultChannel(client) {
-		if (this.resultChannel || !configService.gameTracking.resultChannelId) {
+		const resultChannelId = configService.config.gameTracking.resultChannelId;
+		if (this.resultChannel || !resultChannelId) {
 			return;
 		}
 
-		this.resultChannel = await fetchChannelSafe(client, configService.gameTracking.resultChannelId);
+		this.resultChannel = await fetchChannelSafe(client, resultChannelId);
 	}
 
 	async sendTrackingLog(result) {

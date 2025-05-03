@@ -16,12 +16,12 @@ class MessagesDeletionService {
 	}
 
 	async checkShouldLog({ client, memberId, channelId }) {
-		const guild = await client.guilds.fetch(configService.guildId);
+		const guild = await client.guilds.fetch(configService.config.guildId);
 		if (!(await this.checkShouldLogChannel({ guild, channelId }))) {
 			return false;
 		}
 
-		const { rolesExceptions = [] } = configService.deletedMessagesLogging;
+		const { rolesExceptions = [] } = configService.config.deletedMessagesLogging;
 		if (rolesExceptions.length) {
 			let member;
 			try {
@@ -42,7 +42,7 @@ class MessagesDeletionService {
 	};
 
 	async checkShouldLogChannel({ guild, channelId }) {
-		const { channelExceptions = [] } = configService.deletedMessagesLogging;
+		const { channelExceptions = [] } = configService.config.deletedMessagesLogging;
 		if (channelExceptions.includes(channelId)) {
 			return false;
 		}
@@ -86,11 +86,11 @@ class MessagesDeletionService {
 		const channelId = message.channelId;
 
 		const filesArr = Array.from(message.attachments.values())
-			.filter((file) => file.size <= configService.deletedMessagesLogging.savedFileMaxSizeMB * (1024 ** 2));
+			.filter((file) => file.size <= configService.config.deletedMessagesLogging.savedFileMaxSizeMB * (1024 ** 2));
 
 		const filesSize = filesArr.reduce((sum, data) => sum + data.size, 0);
 		const dirSize = await this.getFilesDirSize();
-		const maxSize = configService.deletedMessagesLogging.savedFolderMaxSizeMB * (1024 ** 2);
+		const maxSize = configService.config.deletedMessagesLogging.savedFolderMaxSizeMB * (1024 ** 2);
 
 		await this.freeUpSpace(filesSize + dirSize - maxSize);
 

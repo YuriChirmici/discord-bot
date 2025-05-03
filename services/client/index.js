@@ -36,7 +36,7 @@ class ClientService {
 				resolve();
 			});
 
-			client.login(configService.token);
+			client.login(configService.config.token);
 			this.client = client;
 		});
 	}

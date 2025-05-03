@@ -4,13 +4,14 @@ const configService = require("../config");
 class ClansStoreService {
 	constructor() {
 		this.clans = [];
-		if (!configService.isDev) {
-			this.init();
-		}
 	}
 
-	async init() {
-		for (let regiment of configService.regiments) {
+	async init() { // do we need this?
+		if (configService.localConfig.isDev) {
+			return;
+		}
+
+		for (let regiment of configService.config.regiments) {
 			if (regiment.gamesTrackingEnabled) {
 				await this.refreshClanByName(regiment.name);
 			}
@@ -18,7 +19,7 @@ class ClansStoreService {
 	}
 
 	async refreshClanByName(name) {
-		const regiment = configService.regiments.find(r => r.name === name && r.gamesTrackingEnabled);
+		const regiment = configService.config.regiments.find(r => r.name === name && r.gamesTrackingEnabled);
 		if (!regiment) {
 			console.error(`Regiment ${name} not found`);
 			return;

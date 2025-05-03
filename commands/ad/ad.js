@@ -15,9 +15,9 @@ module.exports = {
 	get() {
 		return new SlashCommandBuilder()
 			.setName(NAME)
-			.setDescription(local.adCommandDesc.replace("{{types}}", configService.adsConfig.ads.map(({ name }) => name).join(", ")))
+			.setDescription(local.adCommandDesc.replace("{{types}}", configService.config.adsConfig.ads.map(({ name }) => name).join(", ")))
 			.addStringOption(option => option.setName("name").setDescription(local.adNameParamDesc).setRequired(true).addChoices(
-				...configService.adsConfig.ads.map(({ name }) => ({ name, value: name }))
+				...configService.config.adsConfig.ads.map(({ name }) => ({ name, value: name }))
 			))
 			.addChannelOption(option => option.setName("channel").setDescription(local.adChannelParamDesc))
 			.addIntegerOption(option => option.setName("timer").setDescription(local.adTimerParamDesc))
@@ -26,7 +26,7 @@ module.exports = {
 			.addStringOption(option => option.setName("date").setDescription(local.adDateParamDesc))
 			.addStringOption(option => option.setName("time").setDescription(local.adTimeParamDesc))
 			.addBooleanOption(option => option.setName("clear_roles").setDescription(local.adClearRolesParamDesc))
-			.setDefaultMemberPermissions(PermissionFlagsBits[configService.commandsPermission])
+			.setDefaultMemberPermissions(PermissionFlagsBits[configService.config.commandsPermission])
 			.setDMPermission(false);
 	},
 
@@ -147,7 +147,7 @@ module.exports = {
 	},
 
 	getCommandsSelect(adConfig) {
-		const commands = configService.memberCommands.filter(({ hideInAd }) => !hideInAd);
+		const commands = configService.config.memberCommands.filter(({ hideInAd }) => !hideInAd);
 		const select = {
 			...adConfig.select,
 			options: [

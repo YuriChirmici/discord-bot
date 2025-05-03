@@ -3,7 +3,7 @@ const configService = require("../../config");
 const messageDeletionService = require("../../messages-deletion");
 
 const notifyEdited = async ({ client, oldState, newState }) => {
-	const messageUrl = `https://discord.com/channels/${configService.guildId}/${oldState.channelId}/${newState.id}`;
+	const messageUrl = `https://discord.com/channels/${configService.config.guildId}/${oldState.channelId}/${newState.id}`;
 	let message = `Редактирование (<@${newState.author.id}> в ${messageUrl})\n`;
 
 	let hasTextLogs = false;
@@ -72,7 +72,7 @@ const getAuditLog = async (guild, targetId, shouldWait) => {
 };
 
 const sendLog = async ({ client, message, attachments, stickers }) => {
-	const logsChannel = await client.channels.fetch(configService.deletedMessagesLogging.channelId);
+	const logsChannel = await client.channels.fetch(configService.config.deletedMessagesLogging.channelId);
 	await logsChannel.send({
 		content: message.trim(),
 		files: attachments,

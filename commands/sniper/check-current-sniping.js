@@ -13,7 +13,7 @@ module.exports = {
 		return new SlashCommandBuilder()
 			.setName(NAME)
 			.setDescription("Получить информацию о текущем отслеживании")
-			.setDefaultMemberPermissions(PermissionFlagsBits[configService.commandsPermission])
+			.setDefaultMemberPermissions(PermissionFlagsBits[configService.config.commandsPermission])
 			.setDMPermission(false);
 	},
 

@@ -1,11 +1,12 @@
-const configService = require("./services/config");
+const dotenv = require("dotenv");
+dotenv.config();
 
 // npx migrate-mongo create add-some-field
 // npx migrate-mongo up
 
 const config = {
 	mongodb: {
-		url: configService.database.connectionLink,
+		url: process.env.MONGO_URI,
 	},
 
 	migrationsDir: "migrations",

@@ -7,6 +7,7 @@ const discordClientService = require("./services/client");
 const dbService = require("./database");
 const commandsService = require("./services/commands");
 const messageDeletionService = require("./services/messages-deletion");
+const clansStoreService = require("./services/game-tracking/clans-store");
 
 const srcPath = path.join(__dirname, "./src");
 if (!fs.existsSync(srcPath)) {
@@ -15,20 +16,18 @@ if (!fs.existsSync(srcPath)) {
 
 (async () => {
 	try {
+		await dbService.connect();
 		commandsService.init();
 
-		const promises = [
-			discordClientService.login(),
-			dbService.connect()
-		];
+		await discordClientService.login();
 
-		if (!configService.isDev) {
-			promises.push(commandsService.deployCommands());
+		if (!configService.localConfig.isDev) {
+			await commandsService.deployCommands();
 		}
 
-		await Promise.all(promises);
 		await messageDeletionService.clearAll();
 		const discordClient = discordClientService.getClient();
+		await clansStoreService.init();
 
 		schedulerStart(discordClient);
 	} catch (err) {

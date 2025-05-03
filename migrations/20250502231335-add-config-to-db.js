@@ -1,18 +1,12 @@
-const main = require("../config/main.json");
-const ads = require("../config/ads.json");
-const memberCommands = require("../config/member-commands.json");
+const configService = require("../services/config");
 
 const appConfigType = "app-config"; // TODO: move to consts?
 
 module.exports = {
 	async up(db) {
-		    const configToInsert = {
+		const configToInsert = {
 			type: appConfigType,
-			config: {
-				...main,
-				...ads,
-				...memberCommands,
-			},
+			config: configService.config,
 		};
 
 		const existing = await db.collection("configs").findOne({ type: configToInsert.type });
