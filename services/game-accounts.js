@@ -1,7 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const configService = require("./config");
-const { Models } = require("../database");
+const dbService = require("../database");
 const { getDomByUrl, setRoles, getGuildMembers, getNextIntervalDate, sendLongMessage } = require("./helpers");
 const profileService = require("./profile");
 
@@ -52,8 +52,8 @@ class GameAccounts {
 			this.getSiteStats(),
 			this.getSheetStats(),
 			getGuildMembers(guild),
-			Models.Profile.find({ gameAccounts: { $exists: true } }).lean(),
-			Models.NicknameChannelSlot.find({ }).lean(),
+			dbService.Models.Profile.find({ gameAccounts: { $exists: true } }).lean(),
+			dbService.Models.NicknameChannelSlot.find({ }).lean(),
 		]);
 
 		if (!siteStats) {
@@ -117,7 +117,7 @@ class GameAccounts {
 
 		const activeMembersIds = activateMembers.map(({ id }) => id);
 
-		const profiles = await Models.Profile.find({
+		const profiles = await dbService.Models.Profile.find({
 			gameAccounts: { $exists: true, $ne: [] },
 			memberId: { $nin: activeMembersIds }
 		}).lean();
@@ -271,7 +271,7 @@ class GameAccounts {
 				? nicknamesChannel
 				: await guild.channels.fetch(existingSlot.channelId);
 			const message = await channel.messages.fetch(existingSlot.messageId);
-			await Models.NicknameChannelSlot.updateOne({ _id: existingSlot._id }, { memberId: member.id });
+			await dbService.Models.NicknameChannelSlot.updateOne({ _id: existingSlot._id }, { memberId: member.id });
 			try {
 				await message.edit(messageText);
 			} catch (err) {
@@ -302,7 +302,7 @@ class GameAccounts {
 	}
 
 	async createNewNicknameSlot({ memberId, serialNumber, channel, messageText }) {
-		const maxDBSlot = await Models.NicknameChannelSlot.findOne().sort({ serialNumber: -1 }).lean();
+		const maxDBSlot = await dbService.Models.NicknameChannelSlot.findOne().sort({ serialNumber: -1 }).lean();
 		const maxDBNumber = maxDBSlot?.serialNumber || 0;
 		const channelId = channel.id;
 
@@ -320,7 +320,7 @@ class GameAccounts {
 		for (let i = maxDBNumber + 1; i < serialNumber; i++) {
 			const emptySlotMessage = this._prepareNicknameSlotMessage(i);
 			const message = await channel.send(emptySlotMessage);
-			await Models.NicknameChannelSlot.create({
+			await dbService.Models.NicknameChannelSlot.create({
 				serialNumber: i,
 				channelId,
 				messageId: message.id
@@ -329,7 +329,7 @@ class GameAccounts {
 
 		const message = await channel.send(messageText);
 
-		await Models.NicknameChannelSlot.create({
+		await dbService.Models.NicknameChannelSlot.create({
 			memberId,
 			serialNumber,
 			channelId,
@@ -818,7 +818,7 @@ class GameAccounts {
 			period,
 		};
 
-		await Models.Scheduler.updateOne({ name }, task, { upsert: true });
+		await dbService.Models.Scheduler.updateOne({ name }, task, { upsert: true });
 	}
 
 	async runListCheckTask(client) {

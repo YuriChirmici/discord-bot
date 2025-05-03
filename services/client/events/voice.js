@@ -1,6 +1,6 @@
 const { Events } = require("discord.js");
 const tempVoiceService = require("../../temp-voice");
-const { Models } = require("../../../database");
+const dbService = require("../../../database");
 const { isJoinChannel, isLeaveChannel } = require("../../helpers");
 
 const registerEvents = (client) => {
@@ -20,7 +20,7 @@ const registerEvents = (client) => {
 
 	client.on(Events.ChannelDelete, async (channel) => {
 		try {
-			await Models.TempVoiceChannel.deleteOne({ channelId: channel.id });
+			await dbService.Models.TempVoiceChannel.deleteOne({ channelId: channel.id });
 		} catch (err) {
 			logError(err);
 		}

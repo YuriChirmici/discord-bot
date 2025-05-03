@@ -1,6 +1,6 @@
 const configService = require("../config");
 const profileService = require("../profile");
-const { Models } = require("../../database");
+const dbService = require("../../database");
 const TimersService = require("./timers");
 const replayParser = require("./replay-parser");
 const replayFetchService = require("./fetch-replays");
@@ -29,12 +29,12 @@ class GameTrackingService {
 			return false;
 		}
 
-		return Models.Profile.exists({ memberId: member.id, gameTrackingChannelId: channelId });
+		return dbService.Models.Profile.exists({ memberId: member.id, gameTrackingChannelId: channelId });
 	}
 
 	async findTrackableChannelMemberProfile(channel) {
 		const members = (channel?.members || []).filter(m => this.isMemberTrackable(m));
-		const profile = await Models.Profile.findOne({
+		const profile = await dbService.Models.Profile.findOne({
 			memberId: { $in: members.map(m => m.id) },
 			gameAccounts: { $exists: true, $ne: [] },
 			gameTrackingChannelId: { $exists: false }
@@ -102,7 +102,7 @@ class GameTrackingService {
 	}
 
 	async stopTrackingMember(memberId) {
-		const profile = await Models.Profile.findOneAndUpdate({
+		const profile = await dbService.Models.Profile.findOneAndUpdate({
 			memberId,
 			gameTrackingChannelId: { $exists: true }
 		}, {
@@ -131,7 +131,7 @@ class GameTrackingService {
 	}
 
 	async stopTrackingChannel(channelId) {
-		const profile = await Models.Profile.findOneAndUpdate({ gameTrackingChannelId: channelId }, { $unset: { gameTrackingChannelId: "" } });
+		const profile = await dbService.Models.Profile.findOneAndUpdate({ gameTrackingChannelId: channelId }, { $unset: { gameTrackingChannelId: "" } });
 		if (profile) {
 			await this.sendTrackingLog(`Прекращаю отслеживать игрока ${tagMember(profile.memberId)} в канале ${tagChannel(channelId)}`);
 			this.timersService.clearFetchReplayIntervalForMember(profile.memberId);
@@ -139,7 +139,7 @@ class GameTrackingService {
 	}
 
 	async checkIsChannelTracking(channelId) {
-		return await Models.Profile.exists({ gameTrackingChannelId: channelId });
+		return await dbService.Models.Profile.exists({ gameTrackingChannelId: channelId });
 	}
 
 	async onVoiceStateUpdate({ oldState, newState, client }) {
@@ -239,14 +239,14 @@ class GameTrackingService {
 	async stopTrackingAll(client) {
 		await this.setGameTrackingResultChannel(client);
 
-		const profiles = await Models.Profile.find({ gameTrackingChannelId: { $exists: true } });
+		const profiles = await dbService.Models.Profile.find({ gameTrackingChannelId: { $exists: true } });
 		for (let profile of profiles) {
 			await this.stopTrackingChannel(profile.gameTrackingChannelId);
 		}
 	}
 
 	async getCurrentTrackingInfo() {
-		const profiles = await Models.Profile.find({ gameTrackingChannelId: { $exists: true } });
+		const profiles = await dbService.Models.Profile.find({ gameTrackingChannelId: { $exists: true } });
 		if (!profiles.length) {
 			return "Отслеживаемых игроков нет";
 		}

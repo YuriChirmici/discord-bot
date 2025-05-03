@@ -1,7 +1,7 @@
 const { SlashCommandBuilder, PermissionFlagsBits } = require("discord.js");
 const adService = require("../../services/ad");
 const configService = require("../../services/config");
-const { Models } = require("../../database");
+const dbService = require("../../database");
 const { createButtons, createSelect, getButtonsFlat, createEmbed, setRoles, fetchChannelSafe } = require("../../services/helpers");
 const customIdService = require("../../services/custom-id");
 const memberCommandsService = require("../../services/member-commands");
@@ -114,7 +114,7 @@ module.exports = {
 	},
 
 	async createAd_attendance(interaction, client, { messageProps, targetChannel, timer, clearRoles }) {
-		const task = await Models.Scheduler.findOne({ name: adService.deletionTaskName });
+		const task = await dbService.Models.Scheduler.findOne({ name: adService.deletionTaskName });
 		if (task) {
 			await interaction.reply(local.adAttendanceReply);
 		} else {

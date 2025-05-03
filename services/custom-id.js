@@ -1,8 +1,8 @@
-const { Models } = require("../database");
+const dbService = require("../database");
 
 class CustomIdService {
 	async createCustomId(data) {
-		const item = await Models.CustomId.create(data);
+		const item = await dbService.Models.CustomId.create(data);
 		return item._id.toString();
 	}
 
@@ -11,13 +11,13 @@ class CustomIdService {
 			return;
 		}
 
-		const dbItem = await Models.CustomId.findById(customId).lean();
+		const dbItem = await dbService.Models.CustomId.findById(customId).lean();
 		if (!dbItem) {
 			return;
 		}
 
 		if (remove) {
-			await Models.CustomId.deleteOne({ _id: customId });
+			await dbService.Models.CustomId.deleteOne({ _id: customId });
 		}
 
 		return {
@@ -27,7 +27,7 @@ class CustomIdService {
 	}
 
 	async clearCustomId(query) {
-		await Models.CustomId.deleteMany(query);
+		await dbService.Models.CustomId.deleteMany(query);
 	}
 }
 

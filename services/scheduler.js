@@ -4,7 +4,7 @@ const memberCommandsService = require("./member-commands");
 const gameAccountsService = require("./game-accounts");
 const gameTrackingService = require("./game-tracking");
 const { getNextIntervalDate } = require("./helpers");
-const { Models } = require("../database");
+const dbService = require("../database");
 
 const INTERVAL = 3 * 60 * 1000;
 
@@ -14,7 +14,7 @@ const run = async (client, isFirstRun) => {
 			await gameAccountsService.updateListAutoCheckTask();
 		}
 
-		const tasks = await Models.Scheduler.find({ executionDate: { $lt: new Date } });
+		const tasks = await dbService.Models.Scheduler.find({ executionDate: { $lt: new Date } });
 		for (let task of tasks) {
 			await processTask(task, client);
 		}
@@ -45,11 +45,11 @@ const processTask = async (task, client) => {
 		await execute(task.data);
 		console.log(`Executed "${task.name}" task`);
 		if (task.period) {
-			await Models.Scheduler.updateOne({ _id: task._id }, {
+			await dbService.Models.Scheduler.updateOne({ _id: task._id }, {
 				executionDate: getNextIntervalDate(task.period)
 			});
 		} else {
-			await Models.Scheduler.deleteOne({ _id: task._id });
+			await dbService.Models.Scheduler.deleteOne({ _id: task._id });
 		}
 	} catch (err) {
 		const errMessage = `${err?.message || "err"}\n${err?.stack || ""}`;

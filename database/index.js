@@ -14,14 +14,21 @@ for (const file of modelFiles) {
 	Models[filename] = model;
 }
 
-module.exports = {
-	connect: async () => {
+class DatabaseService {
+	constructor() {
+		this.Models = Models;
+	}
+
+	async connect() {
 		try {
 			await mongoose.connect(configService.database.connectionLink);
 			console.log("Connected to DB successfully");
 		} catch (err) {
 			logError(err);
 		}
-	},
-	Models
-};
+	}
+}
+
+const dbService = new DatabaseService();
+
+module.exports = dbService;

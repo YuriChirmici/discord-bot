@@ -4,7 +4,7 @@ const path = require("path");
 require("./services/globals");
 const { start: schedulerStart } = require("./services/scheduler");
 const discordClientService = require("./services/client");
-const { connect: dbConnect } = require("./database");
+const dbService = require("./database");
 const commandsService = require("./services/commands");
 const messageDeletionService = require("./services/messages-deletion");
 
@@ -19,7 +19,7 @@ if (!fs.existsSync(srcPath)) {
 
 		const promises = [
 			discordClientService.login(),
-			dbConnect()
+			dbService.connect()
 		];
 
 		if (!configService.isDev) {

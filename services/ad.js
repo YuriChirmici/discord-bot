@@ -1,5 +1,5 @@
 const configService = require("./config");
-const { Models } = require("../database");
+const dbService = require("../database");
 const { getButtonsFlat, getDateFormatted, getGuildMembers, sendLongMessage } = require("./helpers");
 const gameAccountsService = require("./game-accounts");
 
@@ -37,7 +37,7 @@ class Ad {
 
 	// for attendance ad
 	async addDelayedDeletion(taskData, date) {
-		await Models.Scheduler.create({
+		await dbService.Models.Scheduler.create({
 			name: this.deletionTaskName,
 			executionDate: date,
 			data: taskData
@@ -46,12 +46,12 @@ class Ad {
 
 	// for attendance ad
 	async runAdDeletionTasks(client, options = {}) {
-		const tasks = await Models.Scheduler.find({ name: this.deletionTaskName });
+		const tasks = await dbService.Models.Scheduler.find({ name: this.deletionTaskName });
 		const promises = tasks.map((task) => this.closeAd(task.data, client, options));
 
 		await Promise.all([
 			...promises,
-			Models.Scheduler.deleteMany({ name: this.deletionTaskName })
+			dbService.Models.Scheduler.deleteMany({ name: this.deletionTaskName })
 		]);
 	}
 
@@ -93,7 +93,7 @@ class Ad {
 	async deleteAdRoles(guild) {
 		const [ members, dbStats ] = await Promise.all([
 			getGuildMembers(guild),
-			Models.AdStats.find({}).lean()
+			dbService.Models.AdStats.find({}).lean()
 		]);
 
 		const promises = [];
@@ -140,7 +140,7 @@ class Ad {
 
 	// for attendance ad
 	async saveStats(memberId, roles) {
-		await Models.AdStats.updateOne({ memberId }, { memberId, roles }, { upsert: true });
+		await dbService.Models.AdStats.updateOne({ memberId }, { memberId, roles }, { upsert: true });
 	}
 
 	// for attendance ad
@@ -152,13 +152,13 @@ class Ad {
 
 	// for attendance ad
 	async clearStats() {
-		await Models.AdStats.deleteMany({});
+		await dbService.Models.AdStats.deleteMany({});
 	}
 
 	// for attendance ad
 	async getStatistics(members) {
 		const stat = {};
-		const dbStat = await Models.AdStats.find({}).lean();
+		const dbStat = await dbService.Models.AdStats.find({}).lean();
 
 		for (let item of dbStat) {
 			const member = members.find(({ id }) => id === item.memberId);
@@ -180,7 +180,7 @@ class Ad {
 
 	// for attendance ad
 	async getMemberStatistic(member) {
-		const memberStat = await Models.AdStats.findOne({ memberId: member.id }).lean();
+		const memberStat = await dbService.Models.AdStats.findOne({ memberId: member.id }).lean();
 		return this._prepareRolesStats(memberStat, member);
 	}
 

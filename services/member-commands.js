@@ -3,7 +3,7 @@ const customIdService = require("./custom-id");
 const configService = require("./config");
 const profileService = require("./profile");
 const { createModal, getDateFormatted, getModalAnswers, createEmbed } = require("./helpers");
-const { Models } = require("../database");
+const dbService = require("../database");
 const localizationService = require("./localization");
 
 const local = localizationService.getLocal();
@@ -34,7 +34,7 @@ class MemberCommandsService {
 	}
 
 	async _processCommand_form({ interaction, client, command }) {
-		const oldForm = await Models.Form.findOne({
+		const oldForm = await dbService.Models.Form.findOne({
 			memberId: interaction.member.id,
 			formName: command.name,
 			completed: { $ne: true }
@@ -220,7 +220,7 @@ class MemberCommandsService {
 		const vacationRoles = this.getCommandByName(this.vacationCommandName).vacationRoles;
 		const [ guild, profiles ] = await Promise.all([
 			client.guilds.fetch(configService.guildId),
-			Models.Profile.find({ [profileQueryKey]: { $exists: true, $ne: null } })
+			dbService.Models.Profile.find({ [profileQueryKey]: { $exists: true, $ne: null } })
 		]);
 
 		const membersRaw = await guild.members.fetch();
@@ -248,7 +248,7 @@ class MemberCommandsService {
 		const member = interaction.member;
 		const command = this.getCommandByName(this.vacationCommandName);
 
-		const profile = await Models.Profile.findOne({ memberId: member.id });
+		const profile = await dbService.Models.Profile.findOne({ memberId: member.id });
 		if (!profile?.vacationEnd) {
 			await interaction.reply({
 				content: local.endVacationErr,
