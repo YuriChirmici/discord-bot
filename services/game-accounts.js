@@ -4,6 +4,7 @@ const configService = require("./config");
 const dbService = require("../database");
 const { getDomByUrl, setRoles, getGuildMembers, getNextIntervalDate, sendLongMessage } = require("./helpers");
 const profileService = require("./profile");
+const clientService = require("./client");
 
 const srcPath = path.join(__dirname, "../src");
 const nicknamesFilePath = path.join(srcPath, "nicknames.csv");
@@ -32,6 +33,21 @@ class GameAccounts {
 		this.checkMembersListTaskName = "checkMembersList";
 		this.listAutoCheckPeriod = 4 * 60 * 60 * 1000; // 4 hours
 		this.lastListAutoCheckMessage = "";
+		this.initDbEvents();
+	}
+
+	initDbEvents() {
+		dbService.Models.NicknameChannelSlot.watch().on("change", async (change) => {
+			try {
+				if (!change.operationType === "update" || !(change.updateDescription?.removedFields || []).includes("memberId")) {
+					return;
+				}
+
+				await this.clearSlotById(change.documentKey._id);
+			} catch (err) {
+				logError(err);
+			}
+		});
 	}
 
 	async checkMembersAndUpdateRatingRoles(guild, isAutoCheck) {
@@ -335,6 +351,21 @@ class GameAccounts {
 			channelId,
 			messageId: message.id
 		});
+	}
+
+	async clearSlotById(slotId) {
+		const slot = await dbService.Models.NicknameChannelSlot.findById(slotId).lean();
+
+		const guild = await clientService.client.guilds.fetch(configService.config.guildId);
+		const channel = await guild.channels.fetch(slot.channelId);
+		const message = await channel.messages.fetch(slot.messageId);
+		await dbService.Models.NicknameChannelSlot.updateOne({ _id: slot._id }, { $unset: { memberId: "" } });
+		try {
+			const messageText = this._prepareNicknameSlotMessage(slot.serialNumber);
+			await message.edit(messageText);
+		} catch (err) {
+			logError(err);
+		}
 	}
 
 	_prepareNicknameSlotMessage(number, content = "") {

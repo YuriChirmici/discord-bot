@@ -31,7 +31,7 @@ class ClientService {
 
 			registerEvents(client);
 
-			client.once(Events.ClientReady, readyClient => {
+			client.once(Events.ClientReady, (readyClient) => {
 				console.log(`Ready! Logged in as ${readyClient.user.tag}`);
 				resolve();
 			});
