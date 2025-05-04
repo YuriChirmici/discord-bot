@@ -14,14 +14,46 @@ for (const file of modelFiles) {
 	Models[filename] = model;
 }
 
-module.exports = {
-	connect: async () => {
+class DatabaseService {
+	constructor() {
+		this.Models = Models;
+	}
+
+	async connect() {
 		try {
-			await mongoose.connect(configService.database.connectionLink);
+			await mongoose.connect(process.env.MONGO_URI);
+
+			const configDocument = await this.getDbConfig();
+			configService.setConfig(configDocument.config);
+
+			await this.watchConfigChanges();
 			console.log("Connected to DB successfully");
 		} catch (err) {
 			logError(err);
 		}
-	},
-	Models
-};
+	}
+
+	async watchConfigChanges() {
+		const changeStream = Models.Config.watch();
+
+		changeStream.on("change", async (change) => {
+			if (change.operationType === "update" || change.operationType === "replace") {
+				const configDocument = await this.getDbConfig();
+				if (configDocument?.source !== "admin-gui") {
+					return;
+				}
+
+				configService.setConfig(configDocument.config);
+			}
+		});
+	}
+
+	async getDbConfig() {
+		const config = await Models.Config.findOne({ type: "app-config" }).lean();
+		return config;
+	}
+}
+
+const dbService = new DatabaseService();
+
+module.exports = dbService;

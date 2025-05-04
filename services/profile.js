@@ -1,8 +1,8 @@
-const { Models } = require("../database");
+const dbService = require("../database");
 
 class ProfileService {
 	async createOrUpdate(memberId, data = {}) {
-		await Models.Profile.updateOne({ memberId }, { memberId, ...data }, { upsert: true });
+		await dbService.Models.Profile.updateOne({ memberId }, { memberId, ...data }, { upsert: true });
 	}
 }
 

@@ -13,7 +13,7 @@ module.exports = {
 		return new SlashCommandBuilder()
 			.setName(NAME)
 			.setDescription(local.adStatCommandDesc)
-			.setDefaultMemberPermissions(PermissionFlagsBits[configService.commandsPermission])
+			.setDefaultMemberPermissions(PermissionFlagsBits[configService.config.commandsPermission])
 			.addUserOption(option => option.setName("user").setDescription(local.adStatUserParamDesc))
 			.setDMPermission(false);
 	},

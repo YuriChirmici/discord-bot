@@ -17,7 +17,7 @@ module.exports = {
 		return new SlashCommandBuilder()
 			.setName(NAME)
 			.setDescription(local.updateNicknamesCommandDesc)
-			.setDefaultMemberPermissions(PermissionFlagsBits[configService.commandsPermission])
+			.setDefaultMemberPermissions(PermissionFlagsBits[configService.config.commandsPermission])
 			.setDMPermission(false)
 			.addAttachmentOption(option => option.setName("file").setDescription(local.updateNicknamesFileParamDesc).setRequired(true));
 	},
@@ -25,7 +25,8 @@ module.exports = {
 	async execute({ interaction }) {
 		const file = interaction.options.getAttachment("file");
 		const fileData = await downloadFile(file.url);
-		if (configService.sheetValidationCode && !fileData.includes(configService.sheetValidationCode)) {
+		const sheetValidationCode = configService.config.sheetValidationCode;
+		if (sheetValidationCode && !fileData.includes(sheetValidationCode)) {
 			return await interaction.reply({ content: "Неверный лист пользователей!", ephemeral: true });
 		}
 

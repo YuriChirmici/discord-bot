@@ -1,7 +1,7 @@
 const { SlashCommandBuilder, PermissionFlagsBits } = require("discord.js");
 const adService = require("../../services/ad");
 const configService = require("../../services/config");
-const { Models } = require("../../database");
+const dbService = require("../../database");
 const { createButtons, createSelect, getButtonsFlat, createEmbed, setRoles, fetchChannelSafe } = require("../../services/helpers");
 const customIdService = require("../../services/custom-id");
 const memberCommandsService = require("../../services/member-commands");
@@ -15,9 +15,9 @@ module.exports = {
 	get() {
 		return new SlashCommandBuilder()
 			.setName(NAME)
-			.setDescription(local.adCommandDesc.replace("{{types}}", configService.adsConfig.ads.map(({ name }) => name).join(", ")))
+			.setDescription(local.adCommandDesc.replace("{{types}}", configService.config.adsConfig.ads.map(({ name }) => name).join(", ")))
 			.addStringOption(option => option.setName("name").setDescription(local.adNameParamDesc).setRequired(true).addChoices(
-				...configService.adsConfig.ads.map(({ name }) => ({ name, value: name }))
+				...configService.config.adsConfig.ads.map(({ name }) => ({ name, value: name }))
 			))
 			.addChannelOption(option => option.setName("channel").setDescription(local.adChannelParamDesc))
 			.addIntegerOption(option => option.setName("timer").setDescription(local.adTimerParamDesc))
@@ -26,7 +26,7 @@ module.exports = {
 			.addStringOption(option => option.setName("date").setDescription(local.adDateParamDesc))
 			.addStringOption(option => option.setName("time").setDescription(local.adTimeParamDesc))
 			.addBooleanOption(option => option.setName("clear_roles").setDescription(local.adClearRolesParamDesc))
-			.setDefaultMemberPermissions(PermissionFlagsBits[configService.commandsPermission])
+			.setDefaultMemberPermissions(PermissionFlagsBits[configService.config.commandsPermission])
 			.setDMPermission(false);
 	},
 
@@ -114,7 +114,7 @@ module.exports = {
 	},
 
 	async createAd_attendance(interaction, client, { messageProps, targetChannel, timer, clearRoles }) {
-		const task = await Models.Scheduler.findOne({ name: adService.deletionTaskName });
+		const task = await dbService.Models.Scheduler.findOne({ name: adService.deletionTaskName });
 		if (task) {
 			await interaction.reply(local.adAttendanceReply);
 		} else {
@@ -147,7 +147,7 @@ module.exports = {
 	},
 
 	getCommandsSelect(adConfig) {
-		const commands = configService.memberCommands.filter(({ hideInAd }) => !hideInAd);
+		const commands = configService.config.memberCommands.filter(({ hideInAd }) => !hideInAd);
 		const select = {
 			...adConfig.select,
 			options: [

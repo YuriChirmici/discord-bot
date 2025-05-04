@@ -1,9 +1,10 @@
 const fs = require("fs");
 const path = require("path");
 const configService = require("./config");
-const { Models } = require("../database");
+const dbService = require("../database");
 const { getDomByUrl, setRoles, getGuildMembers, getNextIntervalDate, sendLongMessage } = require("./helpers");
 const profileService = require("./profile");
+const clientService = require("./client");
 
 const srcPath = path.join(__dirname, "../src");
 const nicknamesFilePath = path.join(srcPath, "nicknames.csv");
@@ -32,6 +33,21 @@ class GameAccounts {
 		this.checkMembersListTaskName = "checkMembersList";
 		this.listAutoCheckPeriod = 4 * 60 * 60 * 1000; // 4 hours
 		this.lastListAutoCheckMessage = "";
+		this.initDbEvents();
+	}
+
+	initDbEvents() {
+		dbService.Models.NicknameChannelSlot.watch().on("change", async (change) => {
+			try {
+				if (!change.operationType === "update" || !(change.updateDescription?.removedFields || []).includes("memberId")) {
+					return;
+				}
+
+				await this.clearSlotById(change.documentKey._id);
+			} catch (err) {
+				logError(err);
+			}
+		});
 	}
 
 	async checkMembersAndUpdateRatingRoles(guild, isAutoCheck) {
@@ -52,8 +68,8 @@ class GameAccounts {
 			this.getSiteStats(),
 			this.getSheetStats(),
 			getGuildMembers(guild),
-			Models.Profile.find({ gameAccounts: { $exists: true } }).lean(),
-			Models.NicknameChannelSlot.find({ }).lean(),
+			dbService.Models.Profile.find({ gameAccounts: { $exists: true } }).lean(),
+			dbService.Models.NicknameChannelSlot.find({ }).lean(),
 		]);
 
 		if (!siteStats) {
@@ -80,7 +96,7 @@ class GameAccounts {
 			groupedAccounts[acc.member.id].push(acc);
 		});
 
-		const nicknamesChannel = await guild.channels.fetch(configService.sheetMembersChannelId);
+		const nicknamesChannel = await guild.channels.fetch(configService.config.sheetMembersChannelId);
 		for (let key in groupedAccounts) {
 			const accountData = groupedAccounts[key];
 			await this._updateMemberInNicknamesChannel(guild, accountData, nicknamesChannel, nicknameSlots);
@@ -117,7 +133,7 @@ class GameAccounts {
 
 		const activeMembersIds = activateMembers.map(({ id }) => id);
 
-		const profiles = await Models.Profile.find({
+		const profiles = await dbService.Models.Profile.find({
 			gameAccounts: { $exists: true, $ne: [] },
 			memberId: { $nin: activeMembersIds }
 		}).lean();
@@ -132,14 +148,14 @@ class GameAccounts {
 		deactivateMembers = deactivateMembers.filter((member) => !activateMembers.includes(member));
 
 		await Promise.all([
-			...activateMembers.map((member) => setRoles(member, [], configService.inactiveRoles)),
-			...deactivateMembers.map((member) => setRoles(member, configService.inactiveRoles, [])),
+			...activateMembers.map((member) => setRoles(member, [], configService.config.inactiveRoles)),
+			...deactivateMembers.map((member) => setRoles(member, configService.config.inactiveRoles, [])),
 		]);
 	}
 
 	async getSiteStats() {
 		const regimentsData = await Promise.all(
-			configService.regiments.map((regiment) => this._getSiteStats(regiment))
+			configService.config.regiments.map((regiment) => this._getSiteStats(regiment))
 		);
 
 		const hasMissingRegimentData = regimentsData.some((data) => !data);
@@ -271,7 +287,7 @@ class GameAccounts {
 				? nicknamesChannel
 				: await guild.channels.fetch(existingSlot.channelId);
 			const message = await channel.messages.fetch(existingSlot.messageId);
-			await Models.NicknameChannelSlot.updateOne({ _id: existingSlot._id }, { memberId: member.id });
+			await dbService.Models.NicknameChannelSlot.updateOne({ _id: existingSlot._id }, { memberId: member.id });
 			try {
 				await message.edit(messageText);
 			} catch (err) {
@@ -302,7 +318,7 @@ class GameAccounts {
 	}
 
 	async createNewNicknameSlot({ memberId, serialNumber, channel, messageText }) {
-		const maxDBSlot = await Models.NicknameChannelSlot.findOne().sort({ serialNumber: -1 }).lean();
+		const maxDBSlot = await dbService.Models.NicknameChannelSlot.findOne().sort({ serialNumber: -1 }).lean();
 		const maxDBNumber = maxDBSlot?.serialNumber || 0;
 		const channelId = channel.id;
 
@@ -320,7 +336,7 @@ class GameAccounts {
 		for (let i = maxDBNumber + 1; i < serialNumber; i++) {
 			const emptySlotMessage = this._prepareNicknameSlotMessage(i);
 			const message = await channel.send(emptySlotMessage);
-			await Models.NicknameChannelSlot.create({
+			await dbService.Models.NicknameChannelSlot.create({
 				serialNumber: i,
 				channelId,
 				messageId: message.id
@@ -329,12 +345,27 @@ class GameAccounts {
 
 		const message = await channel.send(messageText);
 
-		await Models.NicknameChannelSlot.create({
+		await dbService.Models.NicknameChannelSlot.create({
 			memberId,
 			serialNumber,
 			channelId,
 			messageId: message.id
 		});
+	}
+
+	async clearSlotById(slotId) {
+		const slot = await dbService.Models.NicknameChannelSlot.findById(slotId).lean();
+
+		const guild = await clientService.client.guilds.fetch(configService.config.guildId);
+		const channel = await guild.channels.fetch(slot.channelId);
+		const message = await channel.messages.fetch(slot.messageId);
+		await dbService.Models.NicknameChannelSlot.updateOne({ _id: slot._id }, { $unset: { memberId: "" } });
+		try {
+			const messageText = this._prepareNicknameSlotMessage(slot.serialNumber);
+			await message.edit(messageText);
+		} catch (err) {
+			logError(err);
+		}
 	}
 
 	_prepareNicknameSlotMessage(number, content = "") {
@@ -752,16 +783,16 @@ class GameAccounts {
 		}
 
 		const { channelId, messageId } = nicknameSlot;
-		const messageUrl = `https://discord.com/channels/${configService.guildId}/${channelId}/${messageId}`;
+		const messageUrl = `https://discord.com/channels/${configService.config.guildId}/${channelId}/${messageId}`;
 		return messageUrl;
 	}
 
 	getRegimentById(regimentId) {
-		return configService.regiments.find(({ id }) => id == regimentId);
+		return configService.config.regiments.find(({ id }) => id == regimentId);
 	}
 
 	getRegimentByLetter(letter) {
-		return configService.regiments.find(({ sheetLetter }) => sheetLetter === letter);
+		return configService.config.regiments.find(({ sheetLetter }) => sheetLetter === letter);
 	}
 
 	async _updateRatingRoles(gameAccounts) {
@@ -777,7 +808,7 @@ class GameAccounts {
 				groupedAccounts[acc.member.id].push(acc);
 			});
 
-		const ratingLevels = configService.ratingRoles.levels || [];
+		const ratingLevels = configService.config.ratingRoles.levels || [];
 		const promises = [];
 		const allRatingRolesList = ratingLevels.map(({ rolesAdd }) => rolesAdd).flat().filter(Boolean);
 
@@ -792,7 +823,7 @@ class GameAccounts {
 
 	_getRolesByRating(rating) {
 		rating = +rating;
-		const ratingLevels = configService.ratingRoles.levels || [];
+		const ratingLevels = configService.config.ratingRoles.levels || [];
 		let roles = [];
 
 		for (let { from, to, rolesAdd } of ratingLevels) {
@@ -818,15 +849,15 @@ class GameAccounts {
 			period,
 		};
 
-		await Models.Scheduler.updateOne({ name }, task, { upsert: true });
+		await dbService.Models.Scheduler.updateOne({ name }, task, { upsert: true });
 	}
 
 	async runListCheckTask(client) {
-		if (configService.isDev) {
+		if (configService.localConfig.isDev) {
 			return;
 		}
 
-		const guild = await client.guilds.fetch(configService.guildId);
+		const guild = await client.guilds.fetch(configService.config.guildId);
 		const { resultText } = await this.checkMembersAndUpdateRatingRoles(guild, true);
 		if (!resultText || this.lastListAutoCheckMessage === resultText) {
 			return;
@@ -835,7 +866,7 @@ class GameAccounts {
 		const systemText = this._prepareAutoCheckSystemMessage();
 		const messageText = `${systemText}\n\n${resultText}`;
 
-		const channel = await guild.channels.fetch(configService.ratingRoles.resultChannelId);
+		const channel = await guild.channels.fetch(configService.config.ratingRoles.resultChannelId);
 		await sendLongMessage(channel, messageText);
 
 		this.lastListAutoCheckMessage = resultText;

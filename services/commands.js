@@ -37,7 +37,7 @@ class CommandService {
 	async deployCommands() {
 		try {
 			const body = this.commands.map((command) => command.data.toJSON());
-			const { clientId, guildId, token } = configService;
+			const { clientId, guildId, token } = configService.config;
 			const rest = new REST().setToken(token);
 			const data = await rest.put(Routes.applicationGuildCommands(clientId, guildId),	{ body });
 

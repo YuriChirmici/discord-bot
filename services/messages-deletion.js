@@ -4,7 +4,7 @@ const fs = require("fs");
 const path = require("path");
 const { v4: uuidv4 } = require("uuid");
 const configService = require("./config");
-const { Models } = require("../database");
+const dbService = require("../database");
 const { clearDirectory, getFolderSize } = require("./helpers");
 
 class MessagesDeletionService {
@@ -16,12 +16,12 @@ class MessagesDeletionService {
 	}
 
 	async checkShouldLog({ client, memberId, channelId }) {
-		const guild = await client.guilds.fetch(configService.guildId);
+		const guild = await client.guilds.fetch(configService.config.guildId);
 		if (!(await this.checkShouldLogChannel({ guild, channelId }))) {
 			return false;
 		}
 
-		const { rolesExceptions = [] } = configService.deletedMessagesLogging;
+		const { rolesExceptions = [] } = configService.config.deletedMessagesLogging;
 		if (rolesExceptions.length) {
 			let member;
 			try {
@@ -42,7 +42,7 @@ class MessagesDeletionService {
 	};
 
 	async checkShouldLogChannel({ guild, channelId }) {
-		const { channelExceptions = [] } = configService.deletedMessagesLogging;
+		const { channelExceptions = [] } = configService.config.deletedMessagesLogging;
 		if (channelExceptions.includes(channelId)) {
 			return false;
 		}
@@ -86,11 +86,11 @@ class MessagesDeletionService {
 		const channelId = message.channelId;
 
 		const filesArr = Array.from(message.attachments.values())
-			.filter((file) => file.size <= configService.deletedMessagesLogging.savedFileMaxSizeMB * (1024 ** 2));
+			.filter((file) => file.size <= configService.config.deletedMessagesLogging.savedFileMaxSizeMB * (1024 ** 2));
 
 		const filesSize = filesArr.reduce((sum, data) => sum + data.size, 0);
 		const dirSize = await this.getFilesDirSize();
-		const maxSize = configService.deletedMessagesLogging.savedFolderMaxSizeMB * (1024 ** 2);
+		const maxSize = configService.config.deletedMessagesLogging.savedFolderMaxSizeMB * (1024 ** 2);
 
 		await this.freeUpSpace(filesSize + dirSize - maxSize);
 
@@ -137,7 +137,7 @@ class MessagesDeletionService {
 		filesData.forEach((file) => file.size = fs.statSync(file.filePath).size);
 
 		const filesSize = filesData.reduce((sum, data) => sum + data.size, 0);
-		await Models.MessageFiles.create({
+		await dbService.Models.MessageFiles.create({
 			memberId,
 			messageId,
 			channelId,
@@ -147,7 +147,7 @@ class MessagesDeletionService {
 	}
 
 	async getMessageFiles(messageId, fileIds) {
-		const document = await Models.MessageFiles.findOne({ messageId }).lean();
+		const document = await dbService.Models.MessageFiles.findOne({ messageId }).lean();
 		if (!document) {
 			return [];
 		}
@@ -172,17 +172,17 @@ class MessagesDeletionService {
 
 	// #region deletion
 	async deleteFilesByChannelId(channelId) {
-		const documents = await Models.MessageFiles.find({ channelId });
+		const documents = await dbService.Models.MessageFiles.find({ channelId });
 		await Promise.all(documents.map((doc) => this.clearDocument(doc)));
 	}
 
 	async clearDocument(document) {
 		await this.deleteFiles(document.files);
-		await Models.MessageFiles.deleteOne({ _id: document._id });
+		await dbService.Models.MessageFiles.deleteOne({ _id: document._id });
 	}
 
 	async deleteMessageFilesByIds(messageId, fileIds = []) {
-		const document = await Models.MessageFiles.findOne({ messageId });
+		const document = await dbService.Models.MessageFiles.findOne({ messageId });
 		if (!document) {
 			return;
 		}
@@ -193,7 +193,7 @@ class MessagesDeletionService {
 			await this.clearDocument(document);
 		} else {
 			await this.deleteFiles(filesForDeletion);
-			await Models.MessageFiles.updateOne({ messageId }, { $pull: { files: { discordId: { $in: fileIds } } } });
+			await dbService.Models.MessageFiles.updateOne({ messageId }, { $pull: { files: { discordId: { $in: fileIds } } } });
 		}
 	}
 
@@ -204,7 +204,7 @@ class MessagesDeletionService {
 	async clearAll() {
 		await Promise.all([
 			clearDirectory(this.filesFolder),
-			await Models.MessageFiles.deleteMany({}),
+			await dbService.Models.MessageFiles.deleteMany({}),
 		]);
 	}
 
@@ -227,7 +227,7 @@ class MessagesDeletionService {
 	}
 
 	async getOldDocuments(limit = 50) {
-		const documents = await Models.MessageFiles.find({}).sort({ createdAt: 1 }).limit(limit);
+		const documents = await dbService.Models.MessageFiles.find({}).sort({ createdAt: 1 }).limit(limit);
 		return documents;
 	}
 	// #endregion

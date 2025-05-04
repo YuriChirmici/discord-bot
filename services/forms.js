@@ -1,6 +1,6 @@
 const { ChannelType, ThreadAutoArchiveDuration } = require("discord.js");
 const configService = require("./config");
-const { Models } = require("../database");
+const dbService = require("../database");
 const customIdService = require("./custom-id");
 const {
 	createButtons,
@@ -26,7 +26,7 @@ class FormsService {
 	}
 
 	getFormByName(name) {
-		const command = configService.memberCommands.find((c) => c.name === name);
+		const command = configService.config.memberCommands.find((c) => c.name === name);
 		return command.type === "form" ? command : null;
 	}
 
@@ -48,7 +48,7 @@ class FormsService {
 
 	async clearOldMemberData({ client, memberId, formName }) {
 		try {
-			const dbRecord = await Models.Form.findOneAndDelete({ memberId, formName });
+			const dbRecord = await dbService.Models.Form.findOneAndDelete({ memberId, formName });
 			if (dbRecord?.channelId) {
 				await customIdService.clearCustomId({ channelId: dbRecord.channelId });
 				const channel = await client.channels.fetch(dbRecord.channelId);
@@ -77,7 +77,7 @@ class FormsService {
 	}
 
 	async createDbRecord(data) {
-		return await Models.Form.create({ ...data, answers: [] });
+		return await dbService.Models.Form.create({ ...data, answers: [] });
 	}
 
 	_getStartQuestion(form) {
@@ -118,7 +118,7 @@ class FormsService {
 			const nextQuestion = this._getQuestionById(question.next, formName);
 			await this.sendQuestion({ ...props, question: nextQuestion });
 		} else {
-			await Models.Form.updateOne(
+			await dbService.Models.Form.updateOne(
 				{ _id: dbRecord._id },
 				{ currentQuestionId: question.id, dateUpdated: new Date() }
 			);
@@ -182,7 +182,7 @@ class FormsService {
 		const channel = message.channel;
 		const memberId = message.member.id;
 
-		let dbRecord = await Models.Form.findOne({ memberId, channelId: channel.id, completed: { $ne: true } }).lean();
+		let dbRecord = await dbService.Models.Form.findOne({ memberId, channelId: channel.id, completed: { $ne: true } }).lean();
 		const currentQuestionId = dbRecord?.currentQuestionId;
 		if (!currentQuestionId) {
 			return;
@@ -296,7 +296,7 @@ class FormsService {
 		const questionId = question.id;
 		const memberId = member.id;
 
-		let dbRecord = await Models.Form.findOne({ memberId, formName, channelId: channel.id, completed: { $ne: true } }).lean();
+		let dbRecord = await dbService.Models.Form.findOne({ memberId, formName, channelId: channel.id, completed: { $ne: true } }).lean();
 		if (!dbRecord) {
 			return;
 		}
@@ -307,7 +307,7 @@ class FormsService {
 		}
 
 		dbRecord.answers.push({ questionId, ...answerData });
-		dbRecord = await Models.Form.findOneAndUpdate(
+		dbRecord = await dbService.Models.Form.findOneAndUpdate(
 			{ _id: dbRecord._id },
 			{ answers: dbRecord.answers, dateUpdated: new Date() },
 			{ new: true }
@@ -331,7 +331,7 @@ class FormsService {
 
 		promises.push(
 			this._changeResultRoles(dbRecord.answers, member, formName),
-			Models.Form.updateOne(
+			dbService.Models.Form.updateOne(
 				{ _id: dbRecord._id },
 				{ completed: true, currentQuestionId: null,	dateUpdated: new Date() }
 			),
@@ -494,12 +494,12 @@ class FormsService {
 	}
 
 	async clearOldForms(client) {
-		const formItems = await Models.Form.find({ completed: { $ne: true } });
+		const formItems = await dbService.Models.Form.find({ completed: { $ne: true } });
 		const hasAuthForms = !!formItems.find(({ formName }) => formName === this.formsNames.auth);
 
 		let members;
 		if (hasAuthForms) {
-			const guild = await client.guilds.fetch(configService.guildId);
+			const guild = await client.guilds.fetch(configService.config.guildId);
 			members = await getGuildMembers(guild);
 		}
 

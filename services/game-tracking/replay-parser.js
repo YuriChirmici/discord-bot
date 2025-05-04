@@ -19,7 +19,7 @@ class ReplayParser {
 
 	async _fetchUnits() {
 		let units = [];
-		if (configService.isDev) {
+		if (configService.localConfig.isDev) {
 			units = require(__dirname + "../../../src/units.json");
 		} else {
 			const result = await fetch("https://api.thunderinsights.dk/v1/units/");

@@ -1,6 +1,6 @@
 const configService = require("../config");
 const profileService = require("../profile");
-const { Models } = require("../../database");
+const dbService = require("../../database");
 const TimersService = require("./timers");
 const replayParser = require("./replay-parser");
 const replayFetchService = require("./fetch-replays");
@@ -25,16 +25,16 @@ class GameTrackingService {
 	}
 
 	isTargetLeavingHisChannel(channelId, member) {
-		if (!(configService.gameTracking?.trackingChannels || []).includes(channelId) || !this.isMemberTrackable(member)) {
+		if (!(configService.config.gameTracking?.trackingChannels || []).includes(channelId) || !this.isMemberTrackable(member)) {
 			return false;
 		}
 
-		return Models.Profile.exists({ memberId: member.id, gameTrackingChannelId: channelId });
+		return dbService.Models.Profile.exists({ memberId: member.id, gameTrackingChannelId: channelId });
 	}
 
 	async findTrackableChannelMemberProfile(channel) {
 		const members = (channel?.members || []).filter(m => this.isMemberTrackable(m));
-		const profile = await Models.Profile.findOne({
+		const profile = await dbService.Models.Profile.findOne({
 			memberId: { $in: members.map(m => m.id) },
 			gameAccounts: { $exists: true, $ne: [] },
 			gameTrackingChannelId: { $exists: false }
@@ -44,7 +44,7 @@ class GameTrackingService {
 	}
 
 	isMemberTrackable(member) {
-		const trackingRoles = configService.gameTracking?.trackingRoles || [];
+		const trackingRoles = configService.config.gameTracking?.trackingRoles || [];
 		return member.roles.cache.some(r => trackingRoles.includes(r.id));
 	}
 
@@ -53,7 +53,7 @@ class GameTrackingService {
 
 		const trackableNicknames = [];
 		for (let gameAccount of profile.gameAccounts) {
-			const regiment = configService.regiments.find(r => r.id === gameAccount.regimentId);
+			const regiment = configService.config.regiments.find(r => r.id === gameAccount.regimentId);
 			if (regiment?.gamesTrackingEnabled) {
 				trackableNicknames.push(gameAccount.nickname);
 			}
@@ -89,7 +89,7 @@ class GameTrackingService {
 		}
 
 		if ((channel.members.size < this.minMembersToTrack) ||
-			!((configService.gameTracking?.trackingChannels || []).includes(channel.id)) ||
+			!((configService.config.gameTracking?.trackingChannels || []).includes(channel.id)) ||
 			(await this.checkIsChannelTracking(channel.id))
 		) {
 			return;
@@ -102,7 +102,7 @@ class GameTrackingService {
 	}
 
 	async stopTrackingMember(memberId) {
-		const profile = await Models.Profile.findOneAndUpdate({
+		const profile = await dbService.Models.Profile.findOneAndUpdate({
 			memberId,
 			gameTrackingChannelId: { $exists: true }
 		}, {
@@ -131,7 +131,7 @@ class GameTrackingService {
 	}
 
 	async stopTrackingChannel(channelId) {
-		const profile = await Models.Profile.findOneAndUpdate({ gameTrackingChannelId: channelId }, { $unset: { gameTrackingChannelId: "" } });
+		const profile = await dbService.Models.Profile.findOneAndUpdate({ gameTrackingChannelId: channelId }, { $unset: { gameTrackingChannelId: "" } });
 		if (profile) {
 			await this.sendTrackingLog(`Прекращаю отслеживать игрока ${tagMember(profile.memberId)} в канале ${tagChannel(channelId)}`);
 			this.timersService.clearFetchReplayIntervalForMember(profile.memberId);
@@ -139,7 +139,7 @@ class GameTrackingService {
 	}
 
 	async checkIsChannelTracking(channelId) {
-		return await Models.Profile.exists({ gameTrackingChannelId: channelId });
+		return await dbService.Models.Profile.exists({ gameTrackingChannelId: channelId });
 	}
 
 	async onVoiceStateUpdate({ oldState, newState, client }) {
@@ -153,7 +153,7 @@ class GameTrackingService {
 	}
 
 	async joinChannel({ newState, client }) {
-		const trackingChannels = configService.gameTracking?.trackingChannels || [];
+		const trackingChannels = configService.config.gameTracking?.trackingChannels || [];
 		if (!trackingChannels.includes(newState.channel.id)) {
 			return;
 		}
@@ -171,7 +171,7 @@ class GameTrackingService {
 	}
 
 	async leaveChannel({ oldState, newState, client }) {
-		const trackingChannels = configService.gameTracking?.trackingChannels || [];
+		const trackingChannels = configService.config.gameTracking?.trackingChannels || [];
 		if (!trackingChannels.includes(oldState.channel.id)) {
 			return;
 		}
@@ -239,14 +239,14 @@ class GameTrackingService {
 	async stopTrackingAll(client) {
 		await this.setGameTrackingResultChannel(client);
 
-		const profiles = await Models.Profile.find({ gameTrackingChannelId: { $exists: true } });
+		const profiles = await dbService.Models.Profile.find({ gameTrackingChannelId: { $exists: true } });
 		for (let profile of profiles) {
 			await this.stopTrackingChannel(profile.gameTrackingChannelId);
 		}
 	}
 
 	async getCurrentTrackingInfo() {
-		const profiles = await Models.Profile.find({ gameTrackingChannelId: { $exists: true } });
+		const profiles = await dbService.Models.Profile.find({ gameTrackingChannelId: { $exists: true } });
 		if (!profiles.length) {
 			return "Отслеживаемых игроков нет";
 		}
@@ -306,11 +306,12 @@ class GameTrackingService {
 
 	// #region result channel
 	async setGameTrackingResultChannel(client) {
-		if (this.resultChannel || !configService.gameTracking.resultChannelId) {
+		const resultChannelId = configService.config.gameTracking.resultChannelId;
+		if (this.resultChannel || !resultChannelId) {
 			return;
 		}
 
-		this.resultChannel = await fetchChannelSafe(client, configService.gameTracking.resultChannelId);
+		this.resultChannel = await fetchChannelSafe(client, resultChannelId);
 	}
 
 	async sendTrackingLog(result) {

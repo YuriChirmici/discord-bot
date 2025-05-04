@@ -68,7 +68,7 @@ const registerEvents = (client) => {
 	registerMemberCommandsEvents(client);
 	gameTrackingEvents(client);
 
-	if (configService.deletedMessagesLogging?.channelId) {
+	if (configService.config.deletedMessagesLogging?.channelId) {
 		deletedMessagesEvents(client);
 	}
 
@@ -102,7 +102,7 @@ const registerEvents = (client) => {
 		try {
 			const msg = message.content.trim();
 			// check if is custom command with "!"
-			if (!message.member.permissions.has(PermissionFlagsBits[configService.commandsPermission]) || msg[0] !== "!") {
+			if (!message.member.permissions.has(PermissionFlagsBits[configService.config.commandsPermission]) || msg[0] !== "!") {
 				return;
 			}
 
