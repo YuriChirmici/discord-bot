@@ -1,6 +1,6 @@
 class PrepareResultService {
 	constructor() {
-		this.teamsStatInterval = 21;
+		this.teamsStatInterval = 16;
 		this.hiddenHieroglyph = "ㅤ";
 		this.prohibitedUnitNameSymbols = [
 			"▄", "␗", "◄", "", "◘", "◐", "▂",
