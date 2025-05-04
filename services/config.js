@@ -1,6 +1,3 @@
-const main = require("../config/main.json");
-const ads = require("../config/ads.json");
-const memberCommands = require("../config/member-commands.json");
 const fs = require("fs");
 const path = require("path");
 
@@ -10,21 +7,6 @@ dotenv.config();
 class ConfigService {
 	constructor() {
 		this.initLocalConfig();
-		this.init(); // TODO: clear init after migration
-	}
-
-	init() {
-		const config = {
-			...main,
-			...ads,
-			...memberCommands,
-		};
-
-		if (config.deletedMessagesLogging?.channelId) {
-			config.deletedMessagesLogging.channelExceptions.push(config.deletedMessagesLogging.channelId);
-		}
-
-		this.config = config;
 	}
 
 	setConfig(config) {
