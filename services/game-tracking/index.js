@@ -24,6 +24,11 @@ class GameTrackingService {
 		this.snipeGamesMaxLimit = 5;
 	}
 
+	async init() {
+		await this.clansStoreService.init();
+		await this.replayParser.init();
+	}
+
 	isTargetLeavingHisChannel(channelId, member) {
 		if (!(configService.config.gameTracking?.trackingChannels || []).includes(channelId) || !this.isMemberTrackable(member)) {
 			return false;
@@ -230,6 +235,7 @@ class GameTrackingService {
 			});
 		});
 
+		// TODO: get clans data before parsing ?
 		const clansData = await this.clansStoreService.getClanDataForReplay({ team1, team2 });
 		const message = this.prepareResultService.prepareTeams(replayData, clansData);
 

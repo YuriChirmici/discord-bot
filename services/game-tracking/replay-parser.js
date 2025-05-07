@@ -6,8 +6,6 @@ class ReplayParser {
 		this.playersMaxLimit = 16;
 		this.teamsSuffixes = [ "t1_", "t2_" ];
 		this.replayFetchService = replayFetchService;
-
-		this.init();
 	}
 
 	async init() {
