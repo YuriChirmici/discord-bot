@@ -46,7 +46,7 @@ class ReplayFetch {
 				"sec-fetch-site": "same-origin",
 				"Referer": "https://warthunder.com/en/tournament/replay/",
 				"Referrer-Policy": "no-referrer-when-downgrade",
-				"cookie": configService.config.gameTracking.replayFetchCookie,
+				"cookie": configService.localConfig.replayFetchCookie,
 			},
 			method: "POST",
 			body: JSON.stringify({
