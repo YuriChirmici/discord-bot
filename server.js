@@ -14,6 +14,10 @@ if (!fs.existsSync(srcPath)) {
 	fs.mkdirSync(srcPath);
 }
 
+if (!fs.existsSync(messageDeletionService.filesFolder)) {
+	fs.mkdirSync(messageDeletionService.filesFolder);
+}
+
 (async () => {
 	try {
 		await dbService.connect();

@@ -10,9 +10,6 @@ const { clearDirectory, getFolderSize } = require("./helpers");
 class MessagesDeletionService {
 	constructor() {
 		this.filesFolder = path.join(__dirname, "../src/messages-files");
-		if (!fs.existsSync(this.filesFolder)) {
-			fs.mkdirSync(this.filesFolder);
-		}
 	}
 
 	async checkShouldLog({ client, memberId, channelId }) {
