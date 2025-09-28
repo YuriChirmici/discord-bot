@@ -7,14 +7,18 @@ class ClansStoreService {
 	}
 
 	async init() { // do we need this?
-		if (configService.localConfig.isDev) {
-			return;
-		}
-
-		for (let regiment of configService.config.regiments) {
-			if (regiment.gamesTrackingEnabled) {
-				await this.refreshClanByName(regiment.name);
+		try {
+			if (configService.localConfig.isDev) {
+				return;
 			}
+
+			for (let regiment of configService.config.regiments) {
+				if (regiment.gamesTrackingEnabled) {
+					await this.refreshClanByName(regiment.name);
+				}
+			}
+		} catch (err) {
+			logError("Failed to init clans store service");
 		}
 	}
 
