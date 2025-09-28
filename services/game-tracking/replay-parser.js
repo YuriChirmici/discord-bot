@@ -1,11 +1,12 @@
-const configService = require("../config");
 const replayFetchService = require("./fetch-replays");
+const fs = require("fs");
 
 class ReplayParser {
 	constructor() {
 		this.playersMaxLimit = 16;
 		this.teamsSuffixes = [ "t1_", "t2_" ];
 		this.replayFetchService = replayFetchService;
+		this.unitsJsonPath = __dirname + "../../../src/units.json";
 	}
 
 	async init() {
@@ -17,11 +18,13 @@ class ReplayParser {
 
 	async _fetchUnits() {
 		let units = [];
-		if (configService.localConfig.isDev) {
-			units = require(__dirname + "../../../src/units.json");
+		if (fs.existsSync(this.unitsJsonPath)) {
+			units = require(this.unitsJsonPath);
+			console.warn("Using local units.json file");
 		} else {
 			const result = await fetch("https://api.thunderinsights.dk/v1/units/");
 			units = await result.json();
+			console.warn("Using remote units from API");
 		}
 
 		const unitsObj = {};
