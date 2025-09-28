@@ -1,12 +1,13 @@
 const replayFetchService = require("./fetch-replays");
 const fs = require("fs");
+const path = require("path");
 
 class ReplayParser {
 	constructor() {
 		this.playersMaxLimit = 16;
 		this.teamsSuffixes = [ "t1_", "t2_" ];
 		this.replayFetchService = replayFetchService;
-		this.unitsJsonPath = __dirname + "../../../src/units.json";
+		this.unitsJsonPath = path.join(__dirname, "../../src/units.json");
 	}
 
 	async init() {
