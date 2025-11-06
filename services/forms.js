@@ -11,7 +11,6 @@ const {
 	generateRandomKey,
 	getModalAnswers,
 	createEmbed,
-	getGuildMembers
 } = require("./helpers");
 const localizationService = require("./localization");
 
@@ -495,13 +494,7 @@ class FormsService {
 
 	async clearOldForms(client) {
 		const formItems = await dbService.Models.Form.find({ completed: { $ne: true } });
-		const hasAuthForms = !!formItems.find(({ formName }) => formName === this.formsNames.auth);
-
-		let members;
-		if (hasAuthForms) {
-			const guild = await client.guilds.fetch(configService.config.guildId);
-			members = await getGuildMembers(guild);
-		}
+		const guild = await client.guilds.fetch(configService.config.guildId);
 
 		for (let item of formItems) {
 			const expirationDate = new Date(new Date(item.dateUpdated).getTime() + 7 * 24 * 60 * 60 * 1000);
@@ -516,7 +509,7 @@ class FormsService {
 			});
 
 			if (item.formName === this.formsNames.auth) {
-				const member = members.find(({ user }) => user.id === item.memberId);
+				const member = await guild.members.fetch(item.memberId);
 				await this._kickAuthMember(member);
 			}
 		}

@@ -223,9 +223,6 @@ class MemberCommandsService {
 			dbService.Models.Profile.find({ [profileQueryKey]: { $exists: true, $ne: null } })
 		]);
 
-		const membersRaw = await guild.members.fetch();
-		const members = Array.from(membersRaw.values());
-
 		const promises = [];
 
 		for (let profile of profiles) {
@@ -233,7 +230,7 @@ class MemberCommandsService {
 				continue;
 			}
 
-			const member = members.find(({ id }) => id == profile.memberId);
+			const member = await guild.members.fetch(profile.memberId);
 			if (member) {
 				promises.push(member.roles[isStart ? "add" : "remove"](vacationRoles));
 			}

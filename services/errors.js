@@ -10,9 +10,15 @@ global.logError = async (err) => {
 		}
 
 		const channel = await client.channels.fetch(configService.config.errorsChannelId);
-		const message = err.stack || err.message || err;
+		let message = err.stack || err.message || err;
+
+		if (!err.stack) {
+			const error = new Error();
+			message += `\n${error.stack}`;
+		}
+
 		if (message) {
-			await channel.send(message);
+			await channel.send(message.substr(0, 1990));
 		}
 	} catch (err) {
 		console.log(err);

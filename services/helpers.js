@@ -302,8 +302,13 @@ module.exports.deleteDuplicates = (arr) => {
 };
 
 module.exports.getGuildMembers = async (guild) => {
-	const members = await guild.members.fetch();
-	return Array.from(members.values());
+	try {
+		const members = await guild.members.fetch();
+		return Array.from(members.values());
+	} catch (err) {
+		logError(err);
+		return [];
+	}
 };
 
 module.exports.sendLongMessage = async (channel, message, limit = 1990) => {
