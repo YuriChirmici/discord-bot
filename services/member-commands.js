@@ -220,17 +220,13 @@ class MemberCommandsService {
 		const vacationRoles = this.getCommandByName(this.vacationCommandName).vacationRoles;
 		const [ guild, profiles ] = await Promise.all([
 			client.guilds.fetch(configService.config.guildId),
-			dbService.Models.Profile.find({ [profileQueryKey]: { $exists: true, $ne: null } })
+			dbService.Models.Profile.find({ [profileQueryKey]: { $exists: true, $ne: null, $lte: new Date() } })
 		]);
 
 		const promises = [];
 		const members = await guild.members.fetch({ user: profiles.map(p => p.memberId) });
 
 		for (let profile of profiles) {
-			if (profile[profileQueryKey].getTime() > Date.now()) {
-				continue;
-			}
-
 			const member = members.find(({ id }) => id == profile.memberId);
 			if (member) {
 				promises.push(member.roles[isStart ? "add" : "remove"](vacationRoles));
