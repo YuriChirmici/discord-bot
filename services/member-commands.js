@@ -224,13 +224,14 @@ class MemberCommandsService {
 		]);
 
 		const promises = [];
+		const members = await guild.members.fetch({ user: profiles.map(p => p.memberId) });
 
 		for (let profile of profiles) {
 			if (profile[profileQueryKey].getTime() > Date.now()) {
 				continue;
 			}
 
-			const member = await guild.members.fetch(profile.memberId);
+			const member = members.find(({ id }) => id == profile.memberId);
 			if (member) {
 				promises.push(member.roles[isStart ? "add" : "remove"](vacationRoles));
 			}

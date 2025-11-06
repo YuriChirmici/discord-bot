@@ -493,15 +493,18 @@ class FormsService {
 	}
 
 	async clearOldForms(client) {
-		const formItems = await dbService.Models.Form.find({ completed: { $ne: true } });
+		const sevenDaysAgo = new Date();
+		sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+		const formItems = await dbService.Models.Form.find({
+			completed: { $ne: true },
+			dateUpdated: { $lt: sevenDaysAgo }
+		}).lean();
+
 		const guild = await client.guilds.fetch(configService.config.guildId);
+		const members = await guild.members.fetch({ user: formItems.map(item => item.memberId) });
 
 		for (let item of formItems) {
-			const expirationDate = new Date(new Date(item.dateUpdated).getTime() + 7 * 24 * 60 * 60 * 1000);
-			if (Date.now() < expirationDate.getTime()) {
-				continue;
-			}
-
 			await this.clearOldMemberData({
 				client,
 				memberId: item.memberId,
@@ -509,7 +512,7 @@ class FormsService {
 			});
 
 			if (item.formName === this.formsNames.auth) {
-				const member = await guild.members.fetch(item.memberId);
+				const member = members.find(({ id }) => id === item.memberId);
 				await this._kickAuthMember(member);
 			}
 		}
