@@ -11,7 +11,9 @@
 		{
 			"channelId": "",
 			"categoryId": "",
-			"channelName": ""
+			"channelName": "",
+			"isPrivate": false,
+			"position": "bottom"
 		}
 	],
 	"errorsChannelId": "",

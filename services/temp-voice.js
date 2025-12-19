@@ -18,6 +18,8 @@ class TempVoiceService {
 
 		const memberId = state.member.id;
 		const categoryId = connection.categoryId;
+		const isPrivate = connection.isPrivate || false;
+		const position = connection.position || "bottom";
 
 		let savedSettings = (await this.getSavedSettings({ creatingChannelId, memberId })) || {
 			name: connection.channelName,
@@ -26,7 +28,7 @@ class TempVoiceService {
 		};
 
 		const savedPermissions = savedSettings.permissions;
-		const permissionOverwrites = await this.prepareChannelPermissions({ guild, categoryId, memberId, savedPermissions });
+		const permissionOverwrites = await this.prepareChannelPermissions({ guild, categoryId, memberId, savedPermissions, isPrivate });
 
 		const channel = await guild.channels.create({
 			type: ChannelType.GuildVoice,
@@ -42,9 +44,11 @@ class TempVoiceService {
 		]);
 
 		await channel.permissionOverwrites.set(permissionOverwrites);
+
+		await this.positionChannel({ channel, categoryId, position, guild });
 	};
 
-	async prepareChannelPermissions({ guild, categoryId, memberId, savedPermissions, }) {
+	async prepareChannelPermissions({ guild, categoryId, memberId, savedPermissions, isPrivate }) {
 		const categoryChannel = await guild.channels.fetch(categoryId);
 		const categoryPermissions = this.getChannelPermissionsPretty(categoryChannel);
 
@@ -60,10 +64,17 @@ class TempVoiceService {
 			allow: this.defaultBotPermissions,
 		} ];
 
+		const everyonePermissions = isPrivate ? [ {
+			id: guild.id, // @everyone role has the same ID as guild
+			type: 0, // for role
+			deny: [ "ViewChannel", "Connect" ],
+		} ] : [];
+
 		const channelPermissions = [
 			...categoryPermissions,
 			...ownerPermissions,
 			...savedPermissions,
+			...everyonePermissions,
 			...botPermissions,
 		];
 
@@ -108,6 +119,22 @@ class TempVoiceService {
 		};
 
 		await dbService.Models.TempVoiceMemberSettings.create(data);
+	}
+
+	async positionChannel({ channel, categoryId, position, guild }) {
+		let newPosition = 0;
+
+		if (position === "bottom") {
+			const lastChannelInCategory = Array.from(guild.channels.cache.values())
+				.filter(ch => ch.parentId === categoryId && ch.id !== channel.id)
+				.sort((a, b) => b.position - a.position)[0];
+
+			if (lastChannelInCategory) {
+				newPosition = lastChannelInCategory.position + 1;
+			}
+		}
+
+		await channel.setPosition(newPosition);
 	}
 
 	getChannelPermissionsPretty(channel, idKey = "id") {
