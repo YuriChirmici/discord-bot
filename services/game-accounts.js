@@ -853,7 +853,7 @@ class GameAccounts {
 	}
 
 	async runListCheckTask(client) {
-		if (configService.localConfig.isDev) {
+		if (configService.localConfig.isDev || !configService.config.regiments?.length) {
 			return;
 		}
 
