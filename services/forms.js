@@ -32,6 +32,9 @@ class FormsService {
 	async startForm({ interaction, member, client, formName }) {
 		const memberId = member.id;
 		const form = this.getFormByName(formName);
+		if (!form) {
+			return;
+		}
 
 		const promises = [ this.createChannel(member, form, client) ];
 		if (form.initialRoles?.length) {
