@@ -26,7 +26,7 @@ class FormsService {
 
 	getFormByName(name) {
 		const command = configService.config.memberCommands.find((c) => c.name === name);
-		return command.type === "form" ? command : null;
+		return command?.type === "form" ? command : null;
 	}
 
 	async startForm({ interaction, member, client, formName }) {
