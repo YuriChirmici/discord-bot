@@ -8,8 +8,7 @@ const localizationService = require("../../services/localization");
 
 const local = localizationService.getLocal();
 const NAME = getCommandName(__filename);
-const srcPath = path.join(__dirname, "../../src");
-const nicknamesPath = path.join(srcPath, "nicknames.csv");
+const nicknamesPath = path.join(srcDir, "nicknames.csv");
 
 module.exports = {
 	name: NAME,

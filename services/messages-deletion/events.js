@@ -1,6 +1,6 @@
 const { Events, AuditLogEvent } = require("discord.js");
-const configService = require("../../config");
-const messageDeletionService = require("../../messages-deletion");
+const configService = require("../config");
+const messageDeletionService = require("./index");
 
 const notifyEdited = async ({ client, oldState, newState }) => {
 	const messageUrl = `https://discord.com/channels/${configService.config.guildId}/${oldState.channelId}/${newState.id}`;

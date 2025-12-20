@@ -1,11 +1,11 @@
 const https = require("https");
 const { Events, PermissionFlagsBits } = require("discord.js");
 const configService = require("../../config");
-const { registerEvents: registerVoiceEvents } = require("./voice");
+const { registerEvents: registerVoiceEvents } = require("../../temp-voice/events");
 const { registerEvents: registerFormsEvents } = require("./forms");
-const { registerEvents: registerMemberCommandsEvents } = require("./memberCommands");
-const { registerEvents: deletedMessagesEvents } = require("./deleted-messages");
-const { registerEvents: gameTrackingEvents } = require("./game-tracking");
+const { registerEvents: registerMemberCommandsEvents } = require("../../member-commands/events");
+const { registerEvents: deletedMessagesEvents } = require("../../messages-deletion/events");
+const { registerEvents: gameTrackingEvents } = require("../../game-tracking/events");
 const customIdService = require("../../custom-id");
 
 const findCommand = (commands, commandName) => {

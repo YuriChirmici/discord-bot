@@ -6,8 +6,7 @@ const { getDomByUrl, setRoles, getGuildMembers, getNextIntervalDate, sendLongMes
 const profileService = require("./profile");
 const clientService = require("./client");
 
-const srcPath = path.join(__dirname, "../src");
-const nicknamesFilePath = path.join(srcPath, "nicknames.csv");
+const nicknamesFilePath = path.join(srcDir, "nicknames.csv");
 
 const CHECK_ERRORS = {
 	missingInSheet: "missingInSheet",

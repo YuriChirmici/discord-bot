@@ -1,10 +1,10 @@
-const formsService = require("./forms");
-const customIdService = require("./custom-id");
-const configService = require("./config");
-const profileService = require("./profile");
-const { createModal, getDateFormatted, getModalAnswers, createEmbed } = require("./helpers");
-const dbService = require("../database");
-const localizationService = require("./localization");
+const formsService = require("../forms");
+const customIdService = require("../custom-id");
+const configService = require("../config");
+const profileService = require("../profile");
+const { createModal, getDateFormatted, getModalAnswers, createEmbed } = require("../helpers");
+const dbService = require("../../database");
+const localizationService = require("../localization");
 
 const local = localizationService.getLocal();
 

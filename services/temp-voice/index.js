@@ -1,6 +1,6 @@
 const { ChannelType } = require("discord.js");
-const configService = require("./config");
-const dbService = require("../database");
+const configService = require("../config");
+const dbService = require("../../database");
 
 class TempVoiceService {
 	constructor() {

@@ -3,13 +3,18 @@ const fetch = require("node-fetch");
 const fs = require("fs");
 const path = require("path");
 const { v4: uuidv4 } = require("uuid");
-const configService = require("./config");
-const dbService = require("../database");
-const { clearDirectory, getFolderSize } = require("./helpers");
+const configService = require("../config");
+const dbService = require("../../database");
+const { clearDirectory, getFolderSize } = require("../helpers");
 
 class MessagesDeletionService {
 	constructor() {
-		this.filesFolder = path.join(__dirname, "../src/messages-files");
+		this.filesFolder = path.join(srcDir, "messages-files");
+
+		if (!fs.existsSync(this.filesFolder)) {
+			fs.mkdirSync(this.filesFolder);
+		}
+
 	}
 
 	async checkShouldLog({ client, memberId, channelId }) {
@@ -127,9 +132,7 @@ class MessagesDeletionService {
 	};
 
 	async saveMessageFiles({ memberId, messageId, channelId, filesData }) {
-		await Promise.all(filesData.map(({ filePath, fileBuffer }) =>
-			fs.promises.writeFile(filePath, fileBuffer, "binary")
-		));
+		await Promise.all(filesData.map(({ filePath, fileBuffer }) => fs.promises.writeFile(filePath, fileBuffer, "binary")));
 
 		filesData.forEach((file) => file.size = fs.statSync(file.filePath).size);
 

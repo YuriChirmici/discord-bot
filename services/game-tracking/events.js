@@ -1,5 +1,5 @@
 const { Events } = require("discord.js");
-const gameTrackingService = require("../../game-tracking");
+const gameTrackingService = require("./index");
 
 const registerEvents = (client) => {
 	client.on(Events.VoiceStateUpdate, async (oldState, newState) => {

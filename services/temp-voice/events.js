@@ -1,7 +1,7 @@
 const { Events } = require("discord.js");
-const tempVoiceService = require("../../temp-voice");
-const dbService = require("../../../database");
-const { isJoinChannel, isLeaveChannel } = require("../../helpers");
+const tempVoiceService = require("./index");
+const dbService = require("../../database");
+const { isJoinChannel, isLeaveChannel } = require("../helpers");
 
 const registerEvents = (client) => {
 	client.on(Events.VoiceStateUpdate, async (oldState, newState) => {

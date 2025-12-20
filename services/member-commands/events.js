@@ -1,6 +1,6 @@
 const { Events } = require("discord.js");
-const memberCommandsService = require("../../member-commands");
-const customIdService = require("../../custom-id");
+const memberCommandsService = require("./index");
+const customIdService = require("../custom-id");
 
 const registerEvents = (client) => {
 	client.on(Events.InteractionCreate, async (interaction) => {

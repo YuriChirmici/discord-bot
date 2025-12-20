@@ -7,7 +7,7 @@ class ReplayParser {
 		this.playersMaxLimit = 16;
 		this.teamsSuffixes = [ "t1_", "t2_" ];
 		this.replayFetchService = replayFetchService;
-		this.unitsJsonPath = path.join(__dirname, "../../src/units.json");
+		this.unitsJsonPath = path.join(srcDir, "units.json");
 	}
 
 	async init() {

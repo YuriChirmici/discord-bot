@@ -14,7 +14,9 @@ module.exports = [
 				...globals.browser,
 				...globals.node,
 				logError: true,
-				getCommandName: true
+				getCommandName: true,
+				rootDir: true,
+				srcDir: true,
 			},
 		},
 		rules: {
