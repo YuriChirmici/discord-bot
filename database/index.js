@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 const fs = require("fs");
 const path = require("path");
 const configService = require("../services/config");
+const { eventsEmitter, eventsNames } = require("./events");
 
 const Models = {};
 const modelsPath = path.join(__dirname, "./models");
@@ -43,7 +44,12 @@ class DatabaseService {
 					return;
 				}
 
-				configService.setConfig(configDocument.config);
+				const oldConfig = configService.config;
+				const newConfig = configDocument.config;
+
+				configService.setConfig(newConfig);
+
+				await eventsEmitter.emitAsync(eventsNames.ConfigChanged, { oldConfig, newConfig });
 			}
 		});
 	}

@@ -35,7 +35,7 @@ module.exports = {
 		const size = interaction.options.getNumber("size") || textResizingService.maxSize;
 		const textAlign = interaction.options.getString("text-align") || textResizingService.textAlign.left;
 
-		const oldName = role.name.replaceAll(textResizingService.lastInvisibleSymbol, "").trim();
+		const oldName = role.name;
 		const newName = textResizingService.resizeText(oldName, size, textAlign);
 
 		await role.edit({ name: newName });

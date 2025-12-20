@@ -3,6 +3,7 @@ const { Events, PermissionFlagsBits } = require("discord.js");
 const configService = require("../../config");
 const { registerEvents: registerVoiceEvents } = require("../../temp-voice/events");
 const { registerEvents: registerFormsEvents } = require("./forms");
+const { registerEvents: registerRolesEvents } = require("../../roles/role-dividers/events");
 const { registerEvents: registerMemberCommandsEvents } = require("../../member-commands/events");
 const { registerEvents: deletedMessagesEvents } = require("../../messages-deletion/events");
 const { registerEvents: gameTrackingEvents } = require("../../game-tracking/events");
@@ -67,6 +68,7 @@ const registerEvents = (client) => {
 	registerFormsEvents(client);
 	registerMemberCommandsEvents(client);
 	gameTrackingEvents(client);
+	registerRolesEvents(client);
 
 	if (configService.config.deletedMessagesLogging?.channelId) {
 		deletedMessagesEvents(client);

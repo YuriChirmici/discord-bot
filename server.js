@@ -11,6 +11,7 @@ const dbService = require("./database");
 const commandsService = require("./services/commands");
 const messageDeletionService = require("./services/messages-deletion");
 const gameTrackingService = require("./services/game-tracking");
+const roleDividerService = require("./services/roles/role-dividers");
 
 if (!fs.existsSync(srcDir)) {
 	fs.mkdirSync(srcDir);
@@ -28,8 +29,11 @@ if (!fs.existsSync(srcDir)) {
 		}
 
 		await messageDeletionService.clearAll();
-		const discordClient = discordClientService.getClient();
+		const discordClient = discordClientService.client;
 		await gameTrackingService.init();
+
+		await roleDividerService.refreshRolesGroups(discordClient);
+		await roleDividerService.resizeDividerRoles(discordClient);
 
 		schedulerStart(discordClient);
 	} catch (err) {

@@ -48,6 +48,7 @@ class TextResizingService {
 	}
 
 	resizeText(text, targetSize, textAlign) {
+		text = text.replaceAll(this.lastInvisibleSymbol, "").trim();
 		const textSize = this.getTextWidth(text);
 		const lastSymbolsNeedCount = textAlign === this.textAlign.center ? 2 : 1;
 		const invisibleRowSize = targetSize - textSize - lastSymbolsNeedCount * this.lastSymbolActualSize;

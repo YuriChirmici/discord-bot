@@ -1,20 +1,17 @@
 const clientService = require("./client");
 const configService = require("./config");
 
-global.logError = async (err) => {
+global.logError = async (err, messageDetails = "") => {
 	try {
-		console.log(err);
-		const client = clientService.getClient();
-		if (!client) {
+		let message = messageDetails + (err.stack || err.message || err);
+		console.log(message);
+
+		if (!clientService.client || !message) {
 			return;
 		}
 
-		const channel = await client.channels.fetch(configService.config.errorsChannelId);
-		let message = err.stack || err.message || err;
-
-		if (message) {
-			await channel.send(message.substr(0, 1990));
-		}
+		const channel = await clientService.client.channels.fetch(configService.config.errorsChannelId);
+		await channel.send(message.substr(0, 1990));
 	} catch (err) {
 		console.log(err);
 	}
