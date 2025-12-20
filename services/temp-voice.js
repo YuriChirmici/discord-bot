@@ -89,7 +89,11 @@ class TempVoiceService {
 		}
 
 		const dbChannel = await dbService.Models.TempVoiceChannel.findOne({ channelId: channel.id });
-		if (dbChannel?.ownerId === state.member.id) {
+		if (!dbChannel) {
+			return;
+		}
+
+		if (dbChannel.ownerId === state.member.id) {
 			await this.saveMemberSettings(dbChannel, channel);
 		}
 
