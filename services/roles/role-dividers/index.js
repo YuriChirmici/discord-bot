@@ -152,16 +152,25 @@ class RoleDividerService {
 		let hasChanges = false;
 
 		// Check each group for divider management
-		for (const group of this.rolesGroups) {
+		for (let i = 0; i < this.rolesGroups.length; i++) {
+			const group = this.rolesGroups[i];
+
 			// Skip first group (it has no divider)
-			if (!group.dividerRoleId) continue;
+			if (!group.dividerRoleId) {
+				continue;
+			}
 
 			// Check if user has any roles from this group
 			const hasRoleFromGroup = group.roles.some(role => userRoleIds.has(role.id));
 			const hasDivider = userRoleIds.has(group.dividerRoleId);
 
+			// Check if this is the first group with user roles (no roles from higher groups)
+			const isFirstGroup = !this.rolesGroups.slice(0, i).some(prevGroup =>
+				prevGroup.roles.some(role => userRoleIds.has(role.id))
+			);
+
 			// If user has roles from group but no divider - add divider
-			if (hasRoleFromGroup && !hasDivider) {
+			if (!isFirstGroup && hasRoleFromGroup && !hasDivider) {
 				await member.roles.add(group.dividerRoleId);
 				const message = `Добавлен разделитель <@&${group.dividerRoleId}> к <@${member.id}>`;
 				logMessages.push(message);
@@ -169,7 +178,7 @@ class RoleDividerService {
 			}
 
 			// If user has no roles from group but has divider - remove divider
-			if (!hasRoleFromGroup && hasDivider) {
+			if ((!hasRoleFromGroup || isFirstGroup) && hasDivider) {
 				await member.roles.remove(group.dividerRoleId);
 				const message = `Удалён разделитель <@&${group.dividerRoleId}> у <@${member.id}>`;
 				logMessages.push(message);
