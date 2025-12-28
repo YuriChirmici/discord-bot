@@ -6,7 +6,7 @@ class TextResizingService {
 		this.customFontName = "gg sans";
 		this._initContext();
 
-		this.maxSize = 200;
+		this.maxSize = 230;
 		this.actualEmojiSize = 16.4765625;
 		this.lastInvisibleSymbol = "ㅤ";
 		this.lastSymbolSize = this.getTextWidth(this.lastInvisibleSymbol);
