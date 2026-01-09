@@ -42,7 +42,7 @@ module.exports = {
 	authTestReply: "Заявка создана, перейдите в ветку <#{{channelId}}>",
 
 	pingCommandDesc: "Проверка",
-	pingReply: "Pong!",
+	pingReply: "Pong2!",
 
 	formSubmitReply: "Результат сохранён!",
 	startedFormExistErr: "Заявка уже создана, перейдите в ветку <#{{channelId}}>",
