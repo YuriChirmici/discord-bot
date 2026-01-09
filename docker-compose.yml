@@ -1,0 +1,15 @@
+services:
+  discord-bot:
+    build: .
+    container_name: discord-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+    volumes:
+      # Persist the src directory (created dynamically by the bot)
+      - bot-src:/app/src
+
+volumes:
+  bot-src:
