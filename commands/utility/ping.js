@@ -2,6 +2,7 @@ const {
 	SlashCommandBuilder,
 	PermissionFlagsBits,
 } = require("discord.js");
+const lodash = require("lodash");
 const configService = require("../../services/config");
 const localizationService = require("../../services/localization");
 
@@ -19,6 +20,7 @@ module.exports = {
 	},
 
 	async execute({ interaction }) {
-		await interaction.reply({ content: local.pingReply, ephemeral: true });
+		const content = local.pingReply + " " + lodash.random(1000, 9999); // Added
+		await interaction.reply({ content, ephemeral: true });
 	}
 };
