@@ -41,8 +41,6 @@ class RoleDividerService {
 
 		if (dividerRoleIds.includes(role.id)) {
 			await this.fixDividerRole(role);
-		} else {
-			await this.fixUsualRole(role);
 		}
 	}
 
@@ -71,19 +69,6 @@ class RoleDividerService {
 		} catch (err) {
 			logError(err, `Error editing divider role: ${role.id}; old name: "${role.name}"; new name: "${resizedName}"; `);
 		}
-	}
-
-	async fixUsualRole(role) {
-		const name = textResizingService.trimText(role.name);
-
-		if (role.name === name) {
-			return;
-		}
-
-		console.log(`Renaming role "${role.name}" to "${name}"`);
-		role.setName(name).catch(err => {
-			logError(err, `Error editing role: ${role.id}; old name: "${role.name}"; new name: "${name}"; `);
-		});
 	}
 
 	async refreshRolesGroups(client) {
