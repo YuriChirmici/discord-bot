@@ -1,9 +1,8 @@
-# Production Dockerfile - clones from GitHub
+# Local development Dockerfile - uses local files with nodemon
 FROM node:20-alpine AS builder
 
-# Install git and build dependencies for canvas
+# Install build dependencies for canvas
 RUN apk add --no-cache \
-    git \
     python3 \
     make \
     g++ \
@@ -15,18 +14,20 @@ RUN apk add --no-cache \
 
 WORKDIR /app
 
-# Clone repository
-RUN git clone --depth 1 --branch main https://github.com/YuriChirmici/discord-bot.git .
+# Copy package files first for better caching
+COPY package*.json ./
 
-# Install production dependencies only
-RUN npm install --omit=dev
+# Install all dependencies (including devDependencies for nodemon)
+RUN npm install
 
-# Production stage - only runtime dependencies
+# Copy rest of files
+COPY . .
+
+# Production stage
 FROM node:20-alpine
 
 # Install runtime libraries
 RUN apk add --no-cache \
-    git \
     cairo \
     pango \
     jpeg \
@@ -43,7 +44,7 @@ COPY --from=builder /app .
 
 # Create fonts directory and copy custom fonts
 RUN mkdir -p /usr/share/fonts/custom
-COPY --from=builder /app/fonts/ /usr/share/fonts/custom/
+COPY fonts/ /usr/share/fonts/custom/
 
 # Update font cache
 RUN fc-cache -f -v
@@ -51,6 +52,6 @@ RUN fc-cache -f -v
 # Create src directory if it doesn't exist
 RUN mkdir -p /app/src
 
-ENV NODE_ENV=production
+ENV NODE_ENV=development
 
-CMD ["npm", "start"]
+CMD ["npm", "run", "dev"]

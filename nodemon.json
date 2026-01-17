@@ -2,10 +2,12 @@
     "env": {
         "__DEV__": "true"
     },
-	"ignore": [
-		"node_modules",
-		"src",
-		"migrations",
-		"config/local-config.json"
-	]
+    "ignore": [
+        "node_modules",
+        "src",
+        "migrations",
+        "config/local-config.json"
+    ],
+    "legacyWatch": true,
+    "polling": true
 }

@@ -6,7 +6,11 @@
   "scripts": {
     "dev": "nodemon server.js",
     "start": "npx migrate-mongo up && node server.js",
-    "eslint": "npx eslint ."
+    "eslint": "npx eslint .",
+    "docker:local": "docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build",
+    "docker:local:stop": "docker compose -f docker-compose.yml -f docker-compose.local.yml stop",
+    "docker:prod": "docker compose up -d --build",
+    "docker:prod:stop": "docker compose stop"
   },
   "author": "",
   "license": "ISC",
@@ -23,6 +27,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.1.1",
+    "cross-env": "^10.1.0",
     "eslint": "^8.57.0",
     "globals": "^15.0.0",
     "nodemon": "^3.0.3"
