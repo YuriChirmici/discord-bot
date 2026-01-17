@@ -65,7 +65,7 @@ class RoleDividerService {
 		try {
 			await role.edit(updates);
 		} catch (err) {
-			console.error(`Error editing divider role: ${role.id}; name: ${role.name}: ` + err);
+			logError(err, `Error editing divider role: ${role.id}; old name: "${role.name}"; new name: "${resizedName}"; `);
 		}
 	}
 
@@ -82,9 +82,11 @@ class RoleDividerService {
 		);
 
 		try {
-			await role.setName(resizedName);
+			if (role.name !== resizedName) {
+				await role.setName(resizedName);
+			}
 		} catch (err) {
-			console.error(`Error editing role: ${role.id}; name: ${role.name}: ` + err);
+			logError(err, `Error editing role: ${role.id}; old name: "${role.name}"; new name: "${resizedName}"; `);
 		}
 	}
 
