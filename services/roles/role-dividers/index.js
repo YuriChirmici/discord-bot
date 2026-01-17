@@ -25,6 +25,10 @@ class RoleDividerService {
 		const roles = Array.from(guild.roles.cache.values());
 
 		for (const role of roles) {
+			if (role.id === guild.id) {
+				continue; // Skip @everyone role
+			}
+
 			await this.fixRole(role);
 		}
 	}
@@ -44,7 +48,7 @@ class RoleDividerService {
 
 	async fixDividerRole(role) {
 		const updates = {};
-		const resizedName = await textResizingService.resizeText(
+		const resizedName = textResizingService.resizeText(
 			role.name,
 			textResizingService.maxSize,
 			textResizingService.textAlign.center
@@ -71,23 +75,15 @@ class RoleDividerService {
 
 	async fixUsualRole(role) {
 		const name = textResizingService.trimText(role.name);
-		const oldSize = textResizingService.getTextWidth(name);
 
-		const maxSize = Math.round(Math.max(oldSize, textResizingService.maxSize * 0.8));
-		const newSize = oldSize > textResizingService.halfSize ? maxSize : textResizingService.halfSize;
-		const resizedName = await textResizingService.resizeText(
-			name,
-			newSize,
-			textResizingService.textAlign.left
-		);
-
-		try {
-			if (role.name !== resizedName) {
-				await role.setName(resizedName);
-			}
-		} catch (err) {
-			logError(err, `Error editing role: ${role.id}; old name: "${role.name}"; new name: "${resizedName}"; `);
+		if (role.name === name) {
+			return;
 		}
+
+		console.log(`Renaming role "${role.name}" to "${name}"`);
+		role.setName(name).catch(err => {
+			logError(err, `Error editing role: ${role.id}; old name: "${role.name}"; new name: "${name}"; `);
+		});
 	}
 
 	async refreshRolesGroups(client) {
