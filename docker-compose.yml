@@ -1,6 +1,3 @@
-# prod: npm run docker:prod
-# dev:  npm run docker:local
-
 services:
   discord-bot:
     build: .

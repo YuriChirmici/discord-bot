@@ -33,8 +33,8 @@ RUN apk add --no-cache \
     giflib \
     pixman \
     fontconfig \
-    ttf-dejavu \
-    font-noto-emoji
+    ttf-dejavu
+    
 
 WORKDIR /app
 
