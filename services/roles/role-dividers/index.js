@@ -38,7 +38,7 @@ class RoleDividerService {
 		if (dividerRoleIds.includes(role.id)) {
 			await this.fixDividerRole(role);
 		} else {
-			// await this.fixUsualRole(role);
+			await this.fixUsualRole(role);
 		}
 	}
 
@@ -65,16 +65,16 @@ class RoleDividerService {
 		try {
 			await role.edit(updates);
 		} catch (err) {
-			logError(err, `Error editing divider role: ${role.id}; name: ${role.name};`);
+			console.error(`Error editing divider role: ${role.id}; name: ${role.name}: ` + err);
 		}
 	}
 
 	async fixUsualRole(role) {
-		const halfLength = Math.ceil(textResizingService.maxSize / 2) - 24;
-
 		const name = textResizingService.trimText(role.name);
 		const oldSize = textResizingService.getTextWidth(name);
-		const newSize = oldSize > textResizingService.halfSize ? textResizingService.maxSize : halfLength;
+
+		const maxSize = Math.round(Math.max(oldSize, textResizingService.maxSize * 0.8));
+		const newSize = oldSize > textResizingService.halfSize ? maxSize : textResizingService.halfSize;
 		const resizedName = await textResizingService.resizeText(
 			name,
 			newSize,
@@ -84,7 +84,7 @@ class RoleDividerService {
 		try {
 			await role.setName(resizedName);
 		} catch (err) {
-			logError(err, `Error editing role: ${role.id}; name: ${role.name};`);
+			console.error(`Error editing role: ${role.id}; name: ${role.name}: ` + err);
 		}
 	}
 
