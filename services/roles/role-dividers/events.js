@@ -18,7 +18,7 @@ const registerEvents = (client) => {
 	client.on(Events.GuildRoleUpdate, async (_oldRole, newRole) => {
 		try {
 			if (_oldRole.name !== newRole.name) {
-				await roleDividerService.resizeDividerRole(newRole);
+				await roleDividerService.fixRole(newRole);
 			}
 
 			if (_oldRole.position !== newRole.position) {
@@ -56,7 +56,7 @@ const registerEvents = (client) => {
 			}
 
 			await roleDividerService.refreshRolesGroups(client);
-			await roleDividerService.resizeDividerRoles(client);
+			await roleDividerService.fixRoles(client);
 
 			console.log("Roles groups refreshed due to dividerRoleIds config change");
 		} catch (err) {

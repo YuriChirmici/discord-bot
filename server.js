@@ -33,7 +33,7 @@ if (!fs.existsSync(srcDir)) {
 		await gameTrackingService.init();
 
 		await roleDividerService.refreshRolesGroups(discordClient);
-		await roleDividerService.resizeDividerRoles(discordClient);
+		await roleDividerService.fixRoles(discordClient);
 
 		schedulerStart(discordClient);
 	} catch (err) {

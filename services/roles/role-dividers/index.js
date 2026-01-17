@@ -11,32 +11,81 @@ class RoleDividerService {
 
 		// Debounce timer for refreshRolesGroups
 		this.refreshRolesGroupsTimer = null;
+
+		this.dividerDefaultColor = 2303016; // "#232428"
 	}
 
-	async resizeDividerRoles(client) {
+	async fixRoles(client) {
 		const dividerRoleIds = configService.config.rolesDividers?.dividerRoleIds || [];
 		if (!dividerRoleIds.length) {
 			return;
 		}
 
 		const guild = await client.guilds.fetch(configService.config.guildId);
+		const roles = Array.from(guild.roles.cache.values());
 
-		for (const roleId of dividerRoleIds) {
-			const role = guild.roles.cache.get(roleId);
-			if (role) {
-				await this.resizeDividerRole(role);
-			}
+		for (const role of roles) {
+			await this.fixRole(role);
 		}
 	}
 
-	async resizeDividerRole(role) {
+	async fixRole(role) {
 		const dividerRoleIds = configService.config.rolesDividers?.dividerRoleIds || [];
-		if (!dividerRoleIds.includes(role.id)) {
+		if (!dividerRoleIds.length) {
 			return;
 		}
 
-		const resizedName = await textResizingService.resizeText(role.name, textResizingService.maxSize, textResizingService.textAlign.center);
-		await role.setName(resizedName);
+		if (dividerRoleIds.includes(role.id)) {
+			await this.fixDividerRole(role);
+		} else {
+			// await this.fixUsualRole(role);
+		}
+	}
+
+	async fixDividerRole(role) {
+		const updates = {};
+		const resizedName = await textResizingService.resizeText(
+			role.name,
+			textResizingService.maxSize,
+			textResizingService.textAlign.center
+		);
+
+		if (role.name !== resizedName) {
+			updates.name = resizedName;
+		}
+
+		if (role.color !== this.dividerDefaultColor) {
+			updates.color = this.dividerDefaultColor;
+		}
+
+		if (!Object.keys(updates).length) {
+			return;
+		}
+
+		try {
+			await role.edit(updates);
+		} catch (err) {
+			logError(err, `Error editing divider role: ${role.id}; name: ${role.name};`);
+		}
+	}
+
+	async fixUsualRole(role) {
+		const halfLength = Math.ceil(textResizingService.maxSize / 2) - 24;
+
+		const name = textResizingService.trimText(role.name);
+		const oldSize = textResizingService.getTextWidth(name);
+		const newSize = oldSize > textResizingService.halfSize ? textResizingService.maxSize : halfLength;
+		const resizedName = await textResizingService.resizeText(
+			name,
+			newSize,
+			textResizingService.textAlign.left
+		);
+
+		try {
+			await role.setName(resizedName);
+		} catch (err) {
+			logError(err, `Error editing role: ${role.id}; name: ${role.name};`);
+		}
 	}
 
 	async refreshRolesGroups(client) {
