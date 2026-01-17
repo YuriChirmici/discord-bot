@@ -10,7 +10,8 @@
     "docker:local": "docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build",
     "docker:local:stop": "docker compose -f docker-compose.yml -f docker-compose.local.yml stop",
     "docker:prod": "docker compose up -d --build",
-    "docker:prod:stop": "docker compose stop"
+    "docker:prod:stop": "docker compose stop",
+    "docker:prod:update": "docker exec discord-bot sh -c \"git pull && npm install --omit=dev\""
   },
   "author": "",
   "license": "ISC",
