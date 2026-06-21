@@ -2,7 +2,6 @@ const {
 	SlashCommandBuilder,
 	PermissionFlagsBits,
 } = require("discord.js");
-const configService = require("../../services/config");
 const { exec } = require("child_process");
 
 const NAME = getCommandName(__filename);
@@ -12,8 +11,8 @@ module.exports = {
 	get() {
 		return new SlashCommandBuilder()
 			.setName(NAME)
-			.setDescription("Обновить бота (git pull + npm install + перезапуск)")
-			.setDefaultMemberPermissions(PermissionFlagsBits[configService.config.commandsPermission])
+			.setDescription("Взять последнюю версию бота и перезапустить его")
+			.setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
 			.setDMPermission(false);
 	},
 
