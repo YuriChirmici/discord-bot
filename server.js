@@ -10,7 +10,7 @@ const discordClientService = require("./services/client");
 const dbService = require("./database");
 const commandsService = require("./services/commands");
 const messageDeletionService = require("./services/messages-deletion");
-const gameTrackingService = require("./services/game-tracking");
+// const gameTrackingService = require("./services/game-tracking");
 const roleDividerService = require("./services/roles/role-dividers");
 
 if (!fs.existsSync(srcDir)) {
@@ -30,7 +30,7 @@ if (!fs.existsSync(srcDir)) {
 
 		await messageDeletionService.clearAll();
 		const discordClient = discordClientService.client;
-		await gameTrackingService.init();
+		// await gameTrackingService.init();
 
 		await roleDividerService.refreshRolesGroups(discordClient);
 		await roleDividerService.fixRoles(discordClient);

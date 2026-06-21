@@ -1,5 +1,6 @@
 const configService = require("../../config");
 const textResizingService = require("../../text-resizing");
+const { sendLongMessage } = require("../../helpers");
 
 class RoleDividerService {
 	constructor() {
@@ -11,6 +12,11 @@ class RoleDividerService {
 
 		// Debounce timer for refreshRolesGroups
 		this.refreshRolesGroupsTimer = null;
+
+		// Debounce for logFixChanges
+		this.logFixChangesTimer = null;
+		this.logFixChangesBuffer = [];
+		this.LOG_DEBOUNCE_DELAY = 30_000;
 
 		this.dividerDefaultColor = 2303016; // "#232428"
 	}
@@ -219,19 +225,47 @@ class RoleDividerService {
 		}
 
 		// Send combined log message to channel
-		await this.logFixChanges(client, logMessages);
+		this.logFixChanges(client, logMessages);
 
 		return { hasChanges };
 	}
 
-	async logFixChanges(client, messages) {
+	logFixChanges(client, messages) {
 		const logsChannelId = configService.config.rolesDividers?.logsChannelId;
 		if (!messages.length || !logsChannelId) return;
+
+		this.logFixChangesBuffer.push(...messages);
+
+		if (this.logFixChangesBuffer.length >= 2) {
+			this._flushLogFixChanges(client);
+			return;
+		}
+
+		if (this.logFixChangesTimer) {
+			clearTimeout(this.logFixChangesTimer);
+		}
+
+		this.logFixChangesTimer = setTimeout(() => {
+			this._flushLogFixChanges(client);
+		}, this.LOG_DEBOUNCE_DELAY);
+	}
+
+	async _flushLogFixChanges(client) {
+		if (this.logFixChangesTimer) {
+			clearTimeout(this.logFixChangesTimer);
+			this.logFixChangesTimer = null;
+		}
+
+		const logsChannelId = configService.config.rolesDividers?.logsChannelId;
+		const buffered = this.logFixChangesBuffer;
+		this.logFixChangesBuffer = [];
+
+		if (!buffered.length || !logsChannelId) return;
 
 		try {
 			const logChannel = await client.channels.fetch(logsChannelId);
 			if (logChannel && logChannel.isTextBased()) {
-				await logChannel.send(messages.join("\n"));
+				await sendLongMessage(logChannel, buffered.join("\n"));
 			}
 		} catch (err) {
 			logError(err);
