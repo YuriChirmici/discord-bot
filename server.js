@@ -36,7 +36,21 @@ if (!fs.existsSync(srcDir)) {
 		await roleDividerService.fixRoles(discordClient);
 
 		schedulerStart(discordClient);
+
+		await logBotStarted(discordClient);
 	} catch (err) {
 		logError(err);
 	}
 })();
+
+const logBotStarted = async (client) => {
+	const logsChannelId = configService.config.generalLogsChannelId;
+	if (!logsChannelId || configService.localConfig.isDev) {
+		return;
+	}
+
+	const logChannel = await client.channels.fetch(logsChannelId);
+	if (logChannel) {
+		logChannel.send("Я запустился");
+	}
+};
